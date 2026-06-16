@@ -1,61 +1,33 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include "chess.h"
 
-#define S 8
-#define a {1, 2, 3}
+/////////////////////////////////////////
+///[ chess.c ]///////////////////////////
+////////////////[ Author: Michjzuman ]///
+/////////////////////////////////////////
 
-const char *board[8][8] = {
-    {"R", "N", "B", "Q", "K", "B", "N", "R"},
-    {"P", "P", "P", "P", "P", "P", "P", "P"},
-    {".", ".", ".", ".", ".", ".", ".", "."},
-    {".", ".", ".", ".", ".", ".", ".", "."},
-    {".", ".", ".", ".", ".", ".", ".", "."},
-    {".", ".", ".", ".", ".", ".", ".", "."},
-    {"p", "p", "p", "p", "p", "p", "p", "p"},
-    {"r", "n", "b", "q", "k", "b", "n", "r"},
-};
+const U8 piece_values[] = PIECE_VALUES;
+const char abc[] = ABC;
+ 
 
-struct Move {
-    int fromX;
-    int fromY;
-    int toX;
-    int toY;
-};
+Board calculate_board(const Game *game) {
+    Board board;
 
-void draw() {
-    for (int y = 7; y >= 0; y--) {
-        for (int x = 0; x < 8; x++) {
-            printf(" %s", board[y][x]);
-        }
-        printf("\n");
-    }
-}
-
-struct Move possibleMoves() {
-    struct Move result[];
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 8; x++) {
-            if (board[y][x] == 'P') {
-                result = (struct Move){
-                    x, y, x, y - 1
-                };
-            }
+    for (U8 y = 0; y < SIZE; y++) {
+        for (U8 x = 0; x < SIZE; x++) {
+            board.squares[y][x] = (
+                y == 1 ? (Piece){PAWN, WHITE} :
+                y == SIZE - 2 ? (Piece){PAWN, BLACK} :
+                (Piece){EMPTY, BLANK}
+            );
         }
     }
-    return result;
+
+
+
+    return board;
 }
 
-void doMove(struct Move move) {
-    board[move.toY][move.toX] = board[move.fromY][move.fromX];
-    board[move.fromY][move.fromX] = ".";
-}
+void calculate_possible_moves(Game *game) {
 
-int main() {
-
-    doMove((struct Move){4, 1, 4, 3});
-    doMove((struct Move){4, 6, 4, 5});
-
-    draw();
 }
 
