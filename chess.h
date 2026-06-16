@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-/////////////////////////////////////////
-///{ chess.h }///////////////////////////
-////////////////{ Author: Michjzuman }///
-/////////////////////////////////////////
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #define SIZE 8
 #define PIECE_VALUES { \

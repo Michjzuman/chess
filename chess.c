@@ -15,8 +15,9 @@ Board calculate_board(const Game *game) {
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
             board.squares[y][x] = (
-                y == 1 ? (Piece){PAWN, WHITE} :
-                y == SIZE - 2 ? (Piece){PAWN, BLACK} :
+                y == 1 || y == SIZE - 2 ? (Piece){
+                    PAWN, y == 1 ? WHITE : BLACK
+                } :
                 (Piece){EMPTY, BLANK}
             );
         }

@@ -10,7 +10,11 @@ int main(void) {
 
     draw_game(&chess);
 
-    draw_game_with_cursor(&chess, (P){3, 4});
+
+    printf("sizeof P:     %lu\n", sizeof(P));
+    printf("sizeof Move:  %lu\n", sizeof(Move));
+    printf("sizeof Game:  %lu\n", sizeof(Game));
+    printf("sizeof Board: %lu\n", sizeof(Board));
 
 }
 
