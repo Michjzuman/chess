@@ -8,7 +8,7 @@
 static const char abc[] = ABC;
 
 static const char symbols[][10] = {
-    " ", "p", "n", "b", "r", "q", "k"
+    " ", "P", "N", "B", "R", "Q", "K"
 };
 
 static void draw_game_full(

@@ -6,11 +6,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+///////////////////////////
+
 #define SIZE 8
 #define PIECE_VALUES { \
     0, 1, 3, 3, 5, 9, 0 \
 }
 #define ABC "abcdefgh"
+#define PIECE_LETTERS \
+    " -NBRQK"
 
 ///////////////////////////
 
@@ -39,6 +43,7 @@ typedef struct {
 typedef struct {
     Move *moves;
     U16 amount_of_moves;
+    U16 moves_capacity;
     Move *possible_moves;
     bool check;
 } Game;
@@ -80,6 +85,9 @@ Board calculate_board(
     const Game *game
 );
 
+void do_move(
+    Game *game, Move move
+);
 
 
 
