@@ -13,8 +13,7 @@
     0, 1, 3, 3, 5, 9, 0 \
 }
 #define ABC "abcdefgh"
-#define PIECE_LETTERS \
-    " -NBRQK"
+#define PIECE_LETTERS "  NBRQK"
 
 ///////////////////////////
 
@@ -34,19 +33,6 @@ typedef struct {
     U8 x;
     U8 y;
 } P;
-
-typedef struct {
-    P start;
-    P end;
-} Move;
-
-typedef struct {
-    Move *moves;
-    U16 amount_of_moves;
-    U16 moves_capacity;
-    Move *possible_moves;
-    bool check;
-} Game;
 
 ///////////////////////////
 
@@ -73,6 +59,39 @@ typedef struct {
 
 ///////////////////////////
 
+typedef struct {
+    P start;
+    P end;
+} Move;
+
+typedef struct {
+    Move *moves;
+    U16 amount_of_moves;
+    U16 moves_capacity;
+
+    Move *possible_moves;
+    U16 amount_of_possible_moves;
+    U16 possible_moves_capacity;
+    
+    bool check;
+    bool moved_king;
+    bool moved_rook_r;
+    bool moved_rook_l;
+    Color turn;
+
+    Board board;
+} Game;
+
+///////////////////////////
+
+typedef struct {
+    U8 *moves;
+} CompactGame;
+
+///////////////////////////
+
+void draw_game_small(const Game *game);
+
 void draw_game(const Game *game);
 
 void draw_game_with_cursor(
@@ -81,13 +100,13 @@ void draw_game_with_cursor(
 
 ///////////////////////////
 
-Board calculate_board(
-    const Game *game
-);
+Game new_game();
 
-void do_move(
-    Game *game, Move move
-);
+void calculate_possible_moves(Game *game);
+
+Board calculate_board(const Game *game);
+
+void do_move(Game *game, Move move);
 
 
 

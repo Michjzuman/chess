@@ -7,9 +7,7 @@
 
 static const char abc[] = ABC;
 
-static const char symbols[][10] = {
-    " ", "P", "N", "B", "R", "Q", "K"
-};
+static const char symbols[] = " PNBRQK";
 
 static void draw_game_full(
     const Game *game,
@@ -23,7 +21,7 @@ static void draw_game_full(
     for (I8 y = SIZE - 1; y >= 0; y--) {
         for (U8 x = 0; x < SIZE; x++) {
             printf(
-                "\033[90m│\033[0m%c%s%s\033[0m%c",
+                "\033[90m│\033[0m%c%s%c\033[0m%c",
                 cursor.x == x && cursor.y == y && show_cursor ? '[' : ' ',
                 board.squares[y][x].color == WHITE ? "\033[32m" : "\033[34m",
                 symbols[board.squares[y][x].type],
@@ -49,6 +47,23 @@ static void draw_game_full(
         }
     }
     printf("\033[0m\n\n");
+}
+
+void draw_game_small(const Game *game) {
+    Board board = calculate_board(game);
+
+    for (I8 y = SIZE - 1; y >= 0; y--) {
+        for (U8 x = 0; x < SIZE; x++) {
+            printf(
+                "%s%c\033[0m ",
+                board.squares[y][x].color == WHITE ? "\033[32m" :
+                board.squares[y][x].color == BLACK ? "\033[34m" : "\033[90m",
+                symbols[board.squares[y][x].type] == ' ' ? '.' :
+                symbols[board.squares[y][x].type]
+            );
+        }
+        printf("\n");
+    }
 }
 
 void draw_game(const Game *game) {
