@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
-#include <termios.h>
-#include <unistd.h>
 
 ///////////////////////////
 
@@ -54,12 +51,6 @@ typedef struct {
 ///////////////////////////
 
 typedef struct {
-    Piece squares[SIZE][SIZE];
-} Board;
-
-///////////////////////////
-
-typedef struct {
     P start;
     P end;
 } Move;
@@ -69,17 +60,20 @@ typedef struct {
     U16 amount_of_moves;
     U16 moves_capacity;
 
-    Move *possible_moves;
-    U16 amount_of_possible_moves;
-    U16 possible_moves_capacity;
+    Move *legal_moves;
+    U8 amount_of_legal_moves;
+    U8 legal_moves_capacity;
     
-    bool check;
     bool moved_king;
     bool moved_rook_r;
     bool moved_rook_l;
+    bool check;
+    bool checkmate;
+    bool draw;
+
     Color turn;
 
-    Board board;
+    Piece board[SIZE][SIZE];
 } Game;
 
 ///////////////////////////
@@ -90,21 +84,17 @@ typedef struct {
 
 ///////////////////////////
 
-void draw_game_small(const Game *game);
+void draw_game_small(Game *game);
 
-void draw_game(const Game *game);
+void draw_game(Game *game);
 
 void draw_game_with_cursor(
-    const Game *game, P cursor
+    Game *game, P cursor
 );
 
 ///////////////////////////
 
 Game new_game();
-
-void calculate_possible_moves(Game *game);
-
-Board calculate_board(const Game *game);
 
 void do_move(Game *game, Move move);
 
