@@ -1,44 +1,74 @@
 #include "chess.h"
 
-int main(void) {
-    
+
+
+int main_old(void) {
     Game game = new_game();
 
-    do_move(&game, (Move){(P){4, 1}, (P){4, 3}});
+    while (true) {
 
-    do_move(&game, (Move){(P){3, 6}, (P){3, 4}});
+        draw_game(&game);
+        
+        printf("%s\n", game.check ? "check" : "not check");
+        printf("\n");
+        
+        printf("%d\n", game.amount_of_legal_moves);
+        printf("\n");
+        
+        
+        for (U16 i = 0; i < game.amount_of_legal_moves; i++) {
+            printf("(%d, %d) -> (%d, %d) | %s\n",
+                game.legal_moves[i].start.x,
+                game.legal_moves[i].start.y,
+                game.legal_moves[i].end.x,
+                game.legal_moves[i].end.y,
+                game.legal_moves[i].notation
+            );
+        }
+        
+        printf("\nyour move: ");
+        char selected_move[50];
 
-    do_move(&game, (Move){(P){6, 0}, (P){5, 2}});
+        while (true) {
+            if (fgets(selected_move, sizeof(selected_move), stdin)) {
+                if (do_move(&game, selected_move)) break;
+            }
 
-    do_move(&game, (Move){(P){1, 7}, (P){2, 5}});
-    //do_move(&game, (Move){(P){1, 7}, (P){0, 5}});
+            printf("move is illegal. try again: ");
+        };
+        
+    }
 
-    do_move(&game, (Move){(P){5, 0}, (P){1, 4}});
+    return 0;
+}
 
-    draw_game_small(&game);
-    printf("\n");
+int main(void) {
+    Game game = new_game();
 
-    printf("sizeof P:     %lu\n", sizeof(P));
-    printf("sizeof Move:  %lu\n", sizeof(Move));
-    printf("sizeof Piece: %lu\n", sizeof(Piece));
-    printf("sizeof Game:  %lu\n", sizeof(Game));
-
+    draw_game(&game);
+    
+    printf("%s\n", game.check ? "check" : "not check");
     printf("\n");
     
     printf("%d\n", game.amount_of_legal_moves);
     printf("\n");
     
-    printf("%s\n", game.check ? "check" : "not check");
-    printf("\n");
-
+    
     for (U16 i = 0; i < game.amount_of_legal_moves; i++) {
-        printf("(%d, %d) -> (%d, %d)\n",
+        printf("(%d, %d) -> (%d, %d) | %s\n",
             game.legal_moves[i].start.x,
             game.legal_moves[i].start.y,
             game.legal_moves[i].end.x,
-            game.legal_moves[i].end.y
+            game.legal_moves[i].end.y,
+            game.legal_moves[i].notation
         );
     }
+
+    bool was_legal = do_move(&game, "e4");
+
+    draw_game(&game);
+
+    return 0;
 }
 
 

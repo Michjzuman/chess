@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 ///////////////////////////
 
@@ -53,6 +54,7 @@ typedef struct {
 typedef struct {
     P start;
     P end;
+    char notation[7];
 } Move;
 
 typedef struct {
@@ -96,7 +98,9 @@ void draw_game_with_cursor(
 
 Game new_game();
 
-void do_move(Game *game, Move move);
+bool do_move(
+    Game *game, char *notation
+);
 
 
 
