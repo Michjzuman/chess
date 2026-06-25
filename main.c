@@ -1,74 +1,47 @@
 #include "chess.h"
 
 
-
-int main_old(void) {
-    Game game = new_game();
-
-    while (true) {
-
-        draw_game(&game);
-        
-        printf("%s\n", game.check ? "check" : "not check");
-        printf("\n");
-        
-        printf("%d\n", game.amount_of_legal_moves);
-        printf("\n");
-        
-        
-        for (U16 i = 0; i < game.amount_of_legal_moves; i++) {
-            printf("(%d, %d) -> (%d, %d) | %s\n",
-                game.legal_moves[i].start.x,
-                game.legal_moves[i].start.y,
-                game.legal_moves[i].end.x,
-                game.legal_moves[i].end.y,
-                game.legal_moves[i].notation
-            );
-        }
-        
-        printf("\nyour move: ");
-        char selected_move[50];
-
-        while (true) {
-            if (fgets(selected_move, sizeof(selected_move), stdin)) {
-                if (do_move(&game, selected_move)) break;
-            }
-
-            printf("move is illegal. try again: ");
-        };
-        
-    }
-
+U8 human(const Game *game) {
     return 0;
 }
+
+
+U8 jonkler(const Game *game) {
+    return rand() % game->amount_of_legal_moves;
+}
+
+
+U8 preprogrammed_bot(const Game *game) {
+    char *moves[] = {
+        "e4", "e5",
+        "Nf3", "d5",
+        "d4", "Nc6",
+        "Bb5"
+    };
+
+    if (
+        game->amount_of_moves <
+        sizeof(moves) / sizeof(char *)
+    ) {
+        for (
+            U8 i = 0;
+            i < game->amount_of_legal_moves;
+            i++
+        ) {
+            if (
+                strcmp(game->legal_moves[i].notation,
+                moves[game->amount_of_moves]) == 0
+            ) {
+                return i;
+            } 
+        }
+    }
+
+    exit(0);
+    return jonkler(game);
+}
+
 
 int main(void) {
-    Game game = new_game();
-
-    draw_game(&game);
-    
-    printf("%s\n", game.check ? "check" : "not check");
-    printf("\n");
-    
-    printf("%d\n", game.amount_of_legal_moves);
-    printf("\n");
-    
-    
-    for (U16 i = 0; i < game.amount_of_legal_moves; i++) {
-        printf("(%d, %d) -> (%d, %d) | %s\n",
-            game.legal_moves[i].start.x,
-            game.legal_moves[i].start.y,
-            game.legal_moves[i].end.x,
-            game.legal_moves[i].end.y,
-            game.legal_moves[i].notation
-        );
-    }
-
-    bool was_legal = do_move(&game, "e4");
-
-    draw_game(&game);
-
-    return 0;
+    play(preprogrammed_bot, preprogrammed_bot);
 }
-
-

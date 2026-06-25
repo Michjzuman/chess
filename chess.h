@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 ///////////////////////////
 
@@ -28,8 +30,8 @@ typedef int64_t I64;
 ///////////////////////////
 
 typedef struct {
-    U8 x;
-    U8 y;
+    I8 x;
+    I8 y;
 } P;
 
 ///////////////////////////
@@ -98,9 +100,14 @@ void draw_game_with_cursor(
 
 Game new_game();
 
+void check_check(Game *game);
+
 bool do_move(
     Game *game, char *notation
 );
 
-
+Color play(
+    U8(*p1)(const Game *),
+    U8(*p2)(const Game *)
+);
 

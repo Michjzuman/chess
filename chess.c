@@ -11,6 +11,21 @@ static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
 
+void raw_move_minimal(Game *game, Move move) {
+    game->amount_of_moves++;
+    if (game->amount_of_moves > game->moves_capacity) {
+        game->moves_capacity *= 2;
+        game->moves = realloc(
+            game->moves,
+            game->moves_capacity * sizeof(Move)
+        );
+    }
+
+    game->board[move.end.y][move.end.x] = game->board[move.start.y][move.start.x];
+    game->board[move.start.y][move.start.x] = (Piece){EMPTY, BLANK};
+}
+
+
 static void calculate_board(Game *game) {
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -51,7 +66,8 @@ static void calculate_board(Game *game) {
 }
 
 
-static void check_check(Game *game) {
+void check_check(Game *game) {
+    game->check = false;
     bool done = false;
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -88,19 +104,22 @@ static void check_check(Game *game) {
                 
                 if (game->check) break;
                 
-                I8 directions[][2] = {
-                    {-1, -1}, {-1, 0}, {-1, 1},
-                    {0, -1}, {0, 1},
-                    {1, -1}, {1, 0}, {1, 1},
+                P directions[] = {
+                    (P){-1, -1}, (P){-1, 0}, (P){-1, 1},
+                    (P){0, -1},  /* ---- */  (P){0, 1},
+                    (P){1, -1},  (P){1, 0},  (P){1, 1}
                 };
 
-                for (U8 d = 0; d < 8; d++) {
-                    for (U8 i = 1; i < SIZE - 1; i++) {
-                        I8 ax = directions[d][0] * i;
-                        I8 ay = directions[d][1] * i;
-                        if (game->board[y + ay][x + ax].color != BLANK) {
+                for (U8 d = 0; d < sizeof(directions) / sizeof(P); d++) {
+                    for (I8 i = 1; i < SIZE - 1; i++) {
+                        I8 ax = directions[d].x * i;
+                        I8 ay = directions[d].y * i;
+                        if (
+                            x + ax >= 0 && x + ax < SIZE &&
+                            y + ay >= 0 && y + ay < SIZE &&
+                            game->board[y + ay][x + ax].color != BLANK
+                        ) {
                             if (
-                                ax >= 0 && ax < SIZE && ay >= 0 && ay < SIZE &&
                                 game->board[y + ay][x + ax].color !=
                                 king.color && (
                                     (
@@ -127,6 +146,31 @@ static void check_check(Game *game) {
 }
 
 
+Game copy_game(const Game *source) {
+    Game copy = *source;
+
+    copy.moves = malloc(copy.amount_of_moves * sizeof(Move));
+    memcpy(copy.moves, source->moves, copy.amount_of_moves * sizeof(Move));
+
+    copy.legal_moves = malloc(copy.amount_of_legal_moves * sizeof(Move));
+    memcpy(copy.legal_moves, source->legal_moves, copy.amount_of_legal_moves * sizeof(Move));
+
+    for (U8 y = 0; y < SIZE; y++) {
+        for (U8 x = 0; x < SIZE; x++) {
+            copy.board[y][x] = source->board[y][x];
+        }
+    }
+
+    return copy;
+}
+
+
+void close_game(Game *game) {
+    free(game->moves);
+    free(game->legal_moves);
+}
+
+
 static void add_legal_move(Game *game, Move move) {
     if (
         move.end.x >= 0 && move.end.x < SIZE &&
@@ -135,27 +179,41 @@ static void add_legal_move(Game *game, Move move) {
         game->board[move.end.y][move.end.x].color &&
         game->board[move.start.y][move.start.x].color == game->turn
     ) {
-        game->amount_of_legal_moves++;
-        if (game->legal_moves_capacity < game->amount_of_legal_moves) {
-            game->legal_moves_capacity *= 2;
-            game->legal_moves = realloc(
-                game->legal_moves, game->legal_moves_capacity * sizeof(Move)
+
+        Game test_game = copy_game(game);
+
+        // -------------- I WAS HERE
+        
+        raw_move_minimal(&test_game, move);
+        
+        check_check(&test_game);
+
+        close_game(&test_game);
+
+        if (!test_game.check) {
+            game->amount_of_legal_moves++;
+            if (game->legal_moves_capacity < game->amount_of_legal_moves) {
+                game->legal_moves_capacity *= 2;
+                game->legal_moves = realloc(
+                    game->legal_moves, game->legal_moves_capacity * sizeof(Move)
+                );
+            }
+    
+            char letter_char = piece_letters[game->board[move.start.y][move.start.x].type];
+            char *letter = malloc(letter_char == ' ' ? 0 : 1);
+            if (letter_char != ' ') letter[0] = letter_char;
+            bool takes = game->board[move.end.y][move.end.x].color != BLANK;
+            snprintf(move.notation, sizeof(move.notation), "%s%s%c%d",
+                letter,           // piece type
+                takes ? "x" : "", // takes
+                abc[move.end.x],  // end x
+                move.end.y + 1    // end y
             );
+            free(letter);
+    
+            game->legal_moves[game->amount_of_legal_moves - 1] = move;
         }
 
-        char letter_char = piece_letters[game->board[move.start.y][move.start.x].type];
-        char *letter = malloc(letter_char == ' ' ? 0 : 1);
-        if (letter_char != ' ') letter[0] = letter_char;
-        bool takes = game->board[move.end.y][move.end.x].color != BLANK;
-        snprintf(move.notation, sizeof(move.notation), "%s%s%c%d",
-            letter,           // piece type
-            takes ? "x" : "", // takes
-            abc[move.end.x],  // end x
-            move.end.y + 1    // end y
-        );
-        free(letter);
-
-        game->legal_moves[game->amount_of_legal_moves - 1] = move;
     }
 }
 
@@ -180,6 +238,7 @@ static void calculate_legal_moves(Game *game) {
     * Promotion
     * No self-check
     * Castling
+    * Resignation & Remis
     * 
     \* --- ---- ---- --- */
 
@@ -211,7 +270,7 @@ static void calculate_legal_moves(Game *game) {
                         }
                     }
                 } else if (square.type == PAWN) {
-                    U8 ay = (
+                    I8 ay = (
                         square.color == WHITE ? 1 : -1
                     );
 
@@ -275,18 +334,12 @@ static void calculate_legal_moves(Game *game) {
 }
 
 
-static void raw_move(Game *game, Move move) {
-    game->amount_of_moves++;
+void raw_move(Game *game, Move move) {
+    raw_move_minimal(game, move);
 
-    if (game->amount_of_moves > game->moves_capacity) {
-        game->moves_capacity *= 2;
-        game->moves = realloc(
-            game->moves,
-            game->moves_capacity * sizeof(Move)
-        );
-    }
-
-    if (!game->moved_king && game->board[move.start.y][move.start.x].type == KING) {
+    if (
+        !game->moved_king && game->board[move.start.y][move.start.x].type == KING
+    ) {
         game->moved_king = true;
     } else if (
         !game->moved_rook_l &&
@@ -305,9 +358,7 @@ static void raw_move(Game *game, Move move) {
     game->moves[game->amount_of_moves - 1] = move;
 
     game->turn = game->turn == WHITE ? BLACK : WHITE;
-    game->check = false;
 
-    calculate_board(game);
     calculate_legal_moves(game);
     check_check(game);
 
@@ -334,7 +385,7 @@ Game new_game() {
     game.amount_of_legal_moves = 0;
     game.legal_moves_capacity = 2;
     game.legal_moves = malloc(
-        game.moves_capacity * sizeof(Move)
+        game.legal_moves_capacity * sizeof(Move)
     );
     
     game.moved_king = false;
@@ -345,7 +396,26 @@ Game new_game() {
     game.draw = false;
     game.turn = WHITE;
 
-    calculate_board(&game);
+    for (U8 y = 0; y < SIZE; y++) {
+        for (U8 x = 0; x < SIZE; x++) {
+            game.board[y][x] = (
+                y == 1 || y == SIZE - 2 ? (Piece){
+                    PAWN, y == 1 ? WHITE : BLACK
+                } :
+                y == 0 || y == SIZE - 1 ? (Piece){
+                    (
+                        x == 0 || x == SIZE - 1 ? ROOK :
+                        x == 1 || x == SIZE - 2 ? KNIGHT :
+                        x == 2 || x == SIZE - 3 ? BISHOP :
+                        x == 3 ? QUEEN : KING
+                    ),
+                    y == 0 ? WHITE : BLACK
+                } :
+                (Piece){EMPTY, BLANK}
+            );
+        }
+    }
+
     calculate_legal_moves(&game);
 
     return game;
@@ -359,8 +429,46 @@ bool do_move(Game *game, char *notation) {
             raw_move(game, game->legal_moves[i]);
             
             return true;
-            // i was here
         }
     }
     return false;
 }
+
+
+Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
+    srand(time(NULL));
+    
+    Game game = new_game();
+
+    while (true) {
+
+        U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
+        
+        char *notation = game.legal_moves[player(&game)].notation;
+
+        bool legal = do_move(&game, notation);
+
+        if (!legal) {
+            free(game.moves);
+            free(game.legal_moves);
+            return 0;
+        };
+
+        draw_game(&game);
+
+        for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
+            printf("| %s ", game.legal_moves[i].notation);
+        }
+
+        printf("\n");
+
+        //if (game.amount_of_moves >= 10) return 0;
+
+        usleep(100000);
+    }
+
+    close_game(&game);
+}
+
+
+
