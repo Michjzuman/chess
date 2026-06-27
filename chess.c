@@ -5,13 +5,11 @@
 ////////////////[ Author: Michjzuman ]///
 /////////////////////////////////////////
 
-
 static const U8 piece_values[] = PIECE_VALUES;
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
-
-void raw_move_minimal(Game *game, Move move) {
+static void raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
     if (game->amount_of_moves > game->moves_capacity) {
         game->moves_capacity *= 2;
@@ -25,48 +23,7 @@ void raw_move_minimal(Game *game, Move move) {
     game->board[move.start.y][move.start.x] = (Piece){EMPTY, BLANK};
 }
 
-
-static void calculate_board(Game *game) {
-    for (U8 y = 0; y < SIZE; y++) {
-        for (U8 x = 0; x < SIZE; x++) {
-            game->board[y][x] = (
-                y == 1 || y == SIZE - 2 ? (Piece){
-                    PAWN, y == 1 ? WHITE : BLACK
-                } :
-                y == 0 || y == SIZE - 1 ? (Piece){
-                    (
-                        x == 0 || x == SIZE - 1 ? ROOK :
-                        x == 1 || x == SIZE - 2 ? KNIGHT :
-                        x == 2 || x == SIZE - 3 ? BISHOP :
-                        x == 3 ? QUEEN : KING
-                    ),
-                    y == 0 ? WHITE : BLACK
-                } :
-                (Piece){EMPTY, BLANK}
-            );
-        }
-    }
-
-    for (U16 i = 0; i < game->amount_of_moves; i++) {
-        game->board[
-            game->moves[i].end.y
-        ][
-            game->moves[i].end.x
-        ] = game->board[
-            game->moves[i].start.y
-        ][
-            game->moves[i].start.x
-        ];
-        game->board[
-            game->moves[i].start.y
-        ][
-            game->moves[i].start.x
-        ] = (Piece){EMPTY, BLANK};
-    }
-}
-
-
-void check_check(Game *game) {
+void is_check(Game *game) {
     game->check = false;
     bool done = false;
     for (U8 y = 0; y < SIZE; y++) {
@@ -78,9 +35,10 @@ void check_check(Game *game) {
                 Piece king = game->board[y][x];
 
                 for (I8 ay = -2; ay <= 2; ay++) {
-                    for (I8 ax = -1; ax <= 2; ax++) {
+                    for (I8 ax = -2; ax <= 2; ax++) {
                         if (
-                            ax >= 0 && ax < SIZE && ay >= 0 && ay < SIZE && 
+                            x + ax >= 0 && x + ax < SIZE &&
+                            y + ay >= 0 && y + ay < SIZE && 
                             game->board[y + ay][x + ax].color != king.color &&
                             game->board[y + ay][x + ax].color != BLANK && (
                                 (
@@ -88,10 +46,10 @@ void check_check(Game *game) {
                                     abs(ax) != abs(ay) && ax != 0 && ay != 0
                                 ) || (
                                     game->board[y + ay][x + ax].type == PAWN &&
-                                    abs(ax) == 1 && ay == (king.color == WHITE ? -1 : 1)
+                                    abs(ax) == 1 && ay == (king.color == WHITE ? 1 : -1)
                                 ) || (
                                     game->board[y + ay][x + ax].type == KING &&
-                                    abs(ax) == 1 && abs(ay) == 1
+                                    abs(ax) <= 1 && abs(ay) <= 1
                                 )
                             )
                         ) {
@@ -145,6 +103,49 @@ void check_check(Game *game) {
     }
 }
 
+void is_draw(Game *game) {
+    if (
+        game->amount_of_legal_moves <= 0 &&
+        !game->check
+    ) {
+        game->draw = true;
+        return;
+    }
+
+    bool only_kings = true;
+    U8 king_count = 0; // king_count can be removed
+    for (U8 y = 0; y < SIZE; y++) {
+        for (U8 x = 0; x < SIZE; x++) {
+            if (
+                game->board[y][x].type != KING &&
+                game->board[y][x].type != EMPTY
+            ) {
+                only_kings = false;
+            }
+            if (game->board[y][x].type == KING) {
+                king_count++;
+            }
+        }
+    }
+    if (king_count != 2) {
+        draw_game(game);
+        exit(1);
+    }
+
+    if (only_kings) {
+        game->draw = true;
+        return;
+    }
+}
+
+void is_checkmate(Game *game) {
+    if (
+        game->amount_of_legal_moves <= 0 &&
+        game->check == true
+    ) {
+        game->checkmate = true;
+    }
+}
 
 Game copy_game(const Game *source) {
     Game copy = *source;
@@ -164,12 +165,10 @@ Game copy_game(const Game *source) {
     return copy;
 }
 
-
 void close_game(Game *game) {
     free(game->moves);
     free(game->legal_moves);
 }
-
 
 static void add_legal_move(Game *game, Move move) {
     if (
@@ -179,15 +178,9 @@ static void add_legal_move(Game *game, Move move) {
         game->board[move.end.y][move.end.x].color &&
         game->board[move.start.y][move.start.x].color == game->turn
     ) {
-
         Game test_game = copy_game(game);
-
-        // -------------- I WAS HERE
-        
         raw_move_minimal(&test_game, move);
-        
-        check_check(&test_game);
-
+        is_check(&test_game);
         close_game(&test_game);
 
         if (!test_game.check) {
@@ -202,21 +195,34 @@ static void add_legal_move(Game *game, Move move) {
             char letter_char = piece_letters[game->board[move.start.y][move.start.x].type];
             char *letter = malloc(letter_char == ' ' ? 0 : 1);
             if (letter_char != ' ') letter[0] = letter_char;
+
             bool takes = game->board[move.end.y][move.end.x].color != BLANK;
-            snprintf(move.notation, sizeof(move.notation), "%s%s%c%d",
+
+            bool show_start_x = (
+                (game->board[move.start.y][move.start.x].type == PAWN && takes)
+                // duplicate notations
+            );
+            char *start_x = malloc(show_start_x ? 1 : 0);
+            if (show_start_x) start_x[0] = abc[move.start.x];
+
+            snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s",
                 letter,           // piece type
+                start_x,          // start x
+                "",               // start y
                 takes ? "x" : "", // takes
                 abc[move.end.x],  // end x
-                move.end.y + 1    // end y
+                move.end.y + 1,   // end y
+                "",               // pawn promotion
+                ""                // check / checkmate
             );
             free(letter);
+            free(start_x);
     
             game->legal_moves[game->amount_of_legal_moves - 1] = move;
         }
 
     }
 }
-
 
 static void calculate_legal_moves(Game *game) {
     if (game->amount_of_legal_moves > 0) {
@@ -231,16 +237,6 @@ static void calculate_legal_moves(Game *game) {
         fprintf(stderr, "Ou shiii 👀. Out of Memory");
         exit(1);
     }
-
-    /* --- TODO LIST --- *\
-    * 
-    * En Passant
-    * Promotion
-    * No self-check
-    * Castling
-    * Resignation & Remis
-    * 
-    \* --- ---- ---- --- */
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -280,9 +276,11 @@ static void calculate_legal_moves(Game *game) {
                         });
                         
                         if (y == (square.color == WHITE ? 1 : 6)) {
-                            add_legal_move(game, (Move){
-                                (P){x, y}, (P){x, y + ay * 2}
-                            });
+                            if (game->board[y + ay * 2][x].color == BLANK) {
+                                add_legal_move(game, (Move){
+                                    (P){x, y}, (P){x, y + ay * 2}
+                                });
+                            }
                         }
                     }
                     for (I8 ax = -1; ax <= 1; ax += 2) {
@@ -333,26 +331,26 @@ static void calculate_legal_moves(Game *game) {
     }
 }
 
-
 void raw_move(Game *game, Move move) {
     raw_move_minimal(game, move);
 
     if (
-        !game->moved_king && game->board[move.start.y][move.start.x].type == KING
+        !game->moved_king[game->turn]
+        && game->board[move.start.y][move.start.x].type == KING
     ) {
-        game->moved_king = true;
+        game->moved_king[game->turn] = true;
     } else if (
-        !game->moved_rook_l &&
+        !game->moved_rook_l[game->turn] &&
         game->board[move.start.y][move.start.x].type == ROOK &&
         move.start.x == 0
     ) {
-        game->moved_rook_l = true;
+        game->moved_rook_l[game->turn] = true;
     } else if (
-        !game->moved_rook_r &&
+        !game->moved_rook_r[game->turn] &&
         game->board[move.start.y][move.start.x].type == ROOK &&
         move.start.x == 7
     ) {
-        game->moved_rook_r = true;
+        game->moved_rook_r[game->turn] = true;
     }
 
     game->moves[game->amount_of_moves - 1] = move;
@@ -360,19 +358,10 @@ void raw_move(Game *game, Move move) {
     game->turn = game->turn == WHITE ? BLACK : WHITE;
 
     calculate_legal_moves(game);
-    check_check(game);
-
-    /* --- TODO LIST --- *\
-    * 
-    * Draw:
-    *   50-move rule
-    *   3-time repetion
-    *   insufficient material:
-    *   stalemate
-    * 
-    \* --- ---- ---- --- */
+    is_check(game);
+    is_draw(game);
+    is_checkmate(game);
 }
-
 
 Game new_game() {
     Game game;
@@ -388,9 +377,12 @@ Game new_game() {
         game.legal_moves_capacity * sizeof(Move)
     );
     
-    game.moved_king = false;
-    game.moved_rook_r = false;
-    game.moved_rook_l = false;
+    game.moved_king[0] = false;
+    game.moved_rook_r[0] = false;
+    game.moved_rook_l[0] = false;
+    game.moved_king[1] = false;
+    game.moved_rook_r[1] = false;
+    game.moved_rook_l[1] = false;
     game.check = false;
     game.checkmate = false;
     game.draw = false;
@@ -421,23 +413,19 @@ Game new_game() {
     return game;
 }
 
-
 bool do_move(Game *game, char *notation) {
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         if (strcmp(game->legal_moves[i].notation, notation) == 0) {
-
             raw_move(game, game->legal_moves[i]);
-            
             return true;
         }
     }
     return false;
 }
 
-
 Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
     srand(time(NULL));
-    
+
     Game game = new_game();
 
     while (true) {
@@ -453,22 +441,39 @@ Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
             free(game.legal_moves);
             return 0;
         };
-
-        draw_game(&game);
+        
+        draw_game_small(&game);
 
         for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
-            printf("| %s ", game.legal_moves[i].notation);
+            printf("%s ", game.legal_moves[i].notation);
         }
-
         printf("\n");
 
-        //if (game.amount_of_moves >= 10) return 0;
+        if (game.checkmate) {
+            close_game(&game);
+            return game.turn;
+        }
+        if (game.draw) {
+            close_game(&game);
+            return BLANK;
+        }
 
-        usleep(100000);
+        //usleep(100000);
     }
-
-    close_game(&game);
 }
 
 
+/* --- TODO LIST --- *\
+* 
+* Draw:
+*   50-move rule
+*   3-time repetion
+*   insufficient material
+* 
+* En Passant
+* Promotion
+* Castling
+* Resignation & Remis
+* 
+\* --- ---- ---- --- */
 

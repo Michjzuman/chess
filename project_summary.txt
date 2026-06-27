@@ -1,0 +1,23 @@
+# Chess Project Overview
+
+## Files Identified:
+
+**Main Files:**
+- `chess.c` - Main implementation file (~35KB)
+- `chess.h` - Header file (~1.7KB)
+- `main.c` - Main entry point (~1.2KB)
+- `tui.c` - Terminal User Interface (~2.3KB)
+
+**Documentation:**
+- `AGENTS.md` - Agent documentation
+- `.gitignore` - Git ignore rules
+
+**Compiled/binaries:**
+- `chess` - Executable
+- `chess_test` - Test executable
+
+## Next Steps:
+1. Review architecture and design patterns
+2. Examine key modules (chess.c, tui.c)
+3. Check test coverage
+4. Review any issues or TODO comments

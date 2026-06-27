@@ -68,9 +68,10 @@ typedef struct {
     U8 amount_of_legal_moves;
     U8 legal_moves_capacity;
     
-    bool moved_king;
-    bool moved_rook_r;
-    bool moved_rook_l;
+    bool moved_king[2];
+    bool moved_rook_r[2];
+    bool moved_rook_l[2];
+    
     bool check;
     bool checkmate;
     bool draw;
@@ -88,19 +89,21 @@ typedef struct {
 
 ///////////////////////////
 
-void draw_game_small(Game *game);
+void draw_game_small(const Game *game);
 
-void draw_game(Game *game);
+void draw_game(const Game *game);
 
 void draw_game_with_cursor(
-    Game *game, P cursor
+    const Game *game, P cursor
 );
 
 ///////////////////////////
 
 Game new_game();
 
-void check_check(Game *game);
+Game copy_game(const Game *source);
+
+void is_check(Game *game);
 
 bool do_move(
     Game *game, char *notation
