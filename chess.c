@@ -9,6 +9,8 @@ static const U8 piece_values[] = PIECE_VALUES;
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
+static void calculate_legal_moves(Game *game);
+
 static void raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
     if (game->amount_of_moves > game->moves_capacity) {
@@ -181,9 +183,18 @@ static void add_legal_move(Game *game, Move move) {
         Game test_game = copy_game(game);
         raw_move_minimal(&test_game, move);
         is_check(&test_game);
+        bool self_check = test_game.check;
+        test_game.turn = test_game.turn == WHITE ? BLACK : WHITE;
+        is_check(&test_game);
+        /*
+        if (test_game.check) {
+            calculate_legal_moves(&test_game);
+            is_checkmate(&test_game);
+        }
+        */
         close_game(&test_game);
 
-        if (!test_game.check) {
+        if (!self_check) {
             game->amount_of_legal_moves++;
             if (game->legal_moves_capacity < game->amount_of_legal_moves) {
                 game->legal_moves_capacity *= 2;
@@ -206,14 +217,15 @@ static void add_legal_move(Game *game, Move move) {
             if (show_start_x) start_x[0] = abc[move.start.x];
 
             snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s",
-                letter,           // piece type
-                start_x,          // start x
-                "",               // start y
-                takes ? "x" : "", // takes
-                abc[move.end.x],  // end x
-                move.end.y + 1,   // end y
-                "",               // pawn promotion
-                ""                // check / checkmate
+                letter,                     // piece type
+                start_x,                    // start x
+                "",                         // start y
+                takes ? "x" : "",           // takes
+                abc[move.end.x],            // end x
+                move.end.y + 1,             // end y
+                "",                         // pawn promotion
+                test_game.checkmate ? "#" : // checkmate
+                test_game.check ? "+" : ""  // check
             );
             free(letter);
             free(start_x);
@@ -271,9 +283,18 @@ static void calculate_legal_moves(Game *game) {
                     );
 
                     if (game->board[y + ay][x].color == BLANK) {
-                        add_legal_move(game, (Move){
-                            (P){x, y}, (P){x, y + ay}
-                        });
+                        if (y == (square.color == WHITE ? 6 : 1)) {
+                            // Promotion
+
+                            add_legal_move(game, (Move){
+                                (P){x, y}, (P){x, y + ay}
+                            });
+
+                        } else {
+                            add_legal_move(game, (Move){
+                                (P){x, y}, (P){x, y + ay}
+                            });
+                        }
                         
                         if (y == (square.color == WHITE ? 1 : 6)) {
                             if (game->board[y + ay * 2][x].color == BLANK) {
@@ -328,6 +349,19 @@ static void calculate_legal_moves(Game *game) {
                 }
             }
         }
+    } 
+
+    // Castling
+    const U8 y = game->turn == WHITE ? 0 : 7;
+    if (
+        game->board[y][4].type == KING &&
+        game->board[y][4].color == game->turn &&
+        game->board[y][5].type == EMPTY &&
+        game->board[y][6].type == EMPTY &&
+        game->board[y][7].type == ROOK &&
+        game->board[y][7].color != game->turn
+    ) {
+        
     }
 }
 
@@ -423,12 +457,15 @@ bool do_move(Game *game, char *notation) {
     return false;
 }
 
-Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
+Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
     srand(time(NULL));
 
     Game game = new_game();
 
+    const U8 height = visualize(&game);
+
     while (true) {
+        usleep(10000);
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
@@ -442,7 +479,8 @@ Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
             return 0;
         };
         
-        draw_game_small(&game);
+        if (height > 0) printf("\033[%dF", height);
+        visualize(&game);
 
         for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
             printf("%s ", game.legal_moves[i].notation);
@@ -451,14 +489,12 @@ Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
 
         if (game.checkmate) {
             close_game(&game);
-            return game.turn;
+            return game.turn == WHITE ? BLACK : WHITE;
         }
         if (game.draw) {
             close_game(&game);
             return BLANK;
         }
-
-        //usleep(100000);
     }
 }
 
@@ -470,9 +506,9 @@ Color play(U8(*p1)(const Game *), U8(*p2)(const Game *)) {
 *   3-time repetion
 *   insufficient material
 * 
-* En Passant
 * Promotion
 * Castling
+* En Passant
 * Resignation & Remis
 * 
 \* --- ---- ---- --- */

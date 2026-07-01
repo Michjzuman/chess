@@ -39,22 +39,11 @@ U8 testing_bot(const Game *game) {
 }
 
 int main(void) {
-    play(jonkler, jonkler);
-
-    /*
-    Game game = new_game();
-    for (U8 y = 0; y < SIZE; y++) {
-        for (U8 x = 0; x < SIZE; x++) {
-            game.board[y][x] = (Piece){EMPTY, BLANK};
-        }
-    }
-    game.board[3][3] = (Piece){KING, WHITE};
-    game.board[4][1] = (Piece){KNIGHT, BLACK};
-    draw_game(&game);
-    is_check(&game);
-    printf(
-        "%s\n\n", game.check ?
-        "CHECK!!!!" : "not check"
+    Color winner = play(draw_game_testing, jonkler, jonkler);
+    printf("%s\n",
+        winner == 0 ? "draw" :
+        winner == 1 ? "green" : "blue"
     );
-    */
+    return 0;
 }
+

@@ -47,7 +47,7 @@ static void draw_game_full(
     printf("\033[0m\n\n");
 }
 
-void draw_game_small(const Game *game) {
+U8 draw_game_small(const Game *game) {
     for (I8 y = SIZE - 1; y >= 0; y--) {
         for (U8 x = 0; x < SIZE; x++) {
             printf(
@@ -60,14 +60,22 @@ void draw_game_small(const Game *game) {
         }
         printf("\n");
     }
+    return SIZE;
 }
 
-void draw_game(const Game *game) {
+U8 draw_game(const Game *game) {
     draw_game_full(game, (P){0, 0}, false);
+    return SIZE * 2 + 5;
 }
 
-void draw_game_with_cursor(const Game *game, P cursor) {
+U8 draw_game_testing(const Game *game) { // can be removed later
+    draw_game_full(game, (P){0, 0}, false);
+    return 0;
+}
+
+U8 draw_game_with_cursor(const Game *game, P cursor) {
     draw_game_full(game, cursor, true);
+    return SIZE * 2 + 5;
 }
 
 

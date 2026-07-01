@@ -13,7 +13,11 @@
     0, 1, 3, 3, 5, 9, 0 \
 }
 #define ABC "abcdefgh"
-#define PIECE_LETTERS "  NBRQK"
+#define PIECE_LETTERS \
+    "  NBRQK"
+#define PROMOTION_PIECES { \
+    2, 3, 4, 5 \
+}
 
 ///////////////////////////
 
@@ -89,27 +93,40 @@ typedef struct {
 
 ///////////////////////////
 
-void draw_game_small(const Game *game);
+U8 draw_game_small(
+    const Game *game
+);
 
-void draw_game(const Game *game);
+U8 draw_game(
+    const Game *game
+);
 
-void draw_game_with_cursor(
-    const Game *game, P cursor
+U8 draw_game_testing(
+    const Game *game
+); // can be removed later
+
+U8 draw_game_with_cursor(
+    const Game *game,
+    P cursor
 );
 
 ///////////////////////////
 
 Game new_game();
 
-Game copy_game(const Game *source);
+Game copy_game(
+    const Game *source
+);
 
 void is_check(Game *game);
 
 bool do_move(
-    Game *game, char *notation
+    Game *game,
+    char *notation
 );
 
 Color play(
+    U8(*visualize)(const Game *),
     U8(*p1)(const Game *),
     U8(*p2)(const Game *)
 );
