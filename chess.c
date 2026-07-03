@@ -115,7 +115,6 @@ void is_draw(Game *game) {
     }
 
     bool only_kings = true;
-    U8 king_count = 0; // king_count can be removed
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
             if (
@@ -124,14 +123,7 @@ void is_draw(Game *game) {
             ) {
                 only_kings = false;
             }
-            if (game->board[y][x].type == KING) {
-                king_count++;
-            }
         }
-    }
-    if (king_count != 2) {
-        draw_game(game);
-        exit(1);
     }
 
     if (only_kings) {
@@ -465,7 +457,7 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
     const U8 height = visualize(&game);
 
     while (true) {
-        usleep(10000);
+        usleep(100000);
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
@@ -482,10 +474,12 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
         if (height > 0) printf("\033[%dF", height);
         visualize(&game);
 
+        /*
         for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
             printf("%s ", game.legal_moves[i].notation);
         }
         printf("\n");
+        */
 
         if (game.checkmate) {
             close_game(&game);

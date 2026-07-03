@@ -1,3 +1,8 @@
+#ifndef CHESS_H
+#define CHESS_H
+
+///////////////////////////
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -34,8 +39,8 @@ typedef int64_t I64;
 ///////////////////////////
 
 typedef struct {
-    I8 x;
-    I8 y;
+    I8 x: 4;
+    I8 y: 4;
 } P;
 
 ///////////////////////////
@@ -93,25 +98,6 @@ typedef struct {
 
 ///////////////////////////
 
-U8 draw_game_small(
-    const Game *game
-);
-
-U8 draw_game(
-    const Game *game
-);
-
-U8 draw_game_testing(
-    const Game *game
-); // can be removed later
-
-U8 draw_game_with_cursor(
-    const Game *game,
-    P cursor
-);
-
-///////////////////////////
-
 Game new_game();
 
 Game copy_game(
@@ -130,4 +116,6 @@ Color play(
     U8(*p1)(const Game *),
     U8(*p2)(const Game *)
 );
+
+#endif
 

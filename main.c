@@ -1,12 +1,6 @@
 #include "chess.h"
-
-U8 human(const Game *game) {
-    return 0;
-}
-
-U8 jonkler(const Game *game) {
-    return rand() % game->amount_of_legal_moves;
-}
+#include "tui.h"
+#include "bots.h"
 
 U8 testing_bot(const Game *game) {
     char *moves[] = {
@@ -39,11 +33,13 @@ U8 testing_bot(const Game *game) {
 }
 
 int main(void) {
-    Color winner = play(draw_game_testing, jonkler, jonkler);
+    Color winner = play(draw_game, human, jonkler);
     printf("%s\n",
         winner == 0 ? "draw" :
         winner == 1 ? "green" : "blue"
     );
+    printf("%lu\n", sizeof(Game) * 240);
+    printf("%lu\n", sizeof(P));
     return 0;
 }
 

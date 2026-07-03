@@ -79,3 +79,6 @@ U8 draw_game_with_cursor(const Game *game, P cursor) {
 }
 
 
+U8 human(const Game *game) {
+    return 0;
+}
