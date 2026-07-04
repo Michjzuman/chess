@@ -33,13 +33,16 @@ U8 testing_bot(const Game *game) {
 }
 
 int main(void) {
+    printf("sizeof Game:  %lu\n", sizeof(Game));
+    printf("sizeof Move:  %lu\n", sizeof(Move));
+    printf("sizeof P:     %lu\n", sizeof(P));
+    printf("sizeof Piece: %lu\n", sizeof(Piece));
+
     Color winner = play(draw_game, human, jonkler);
     printf("%s\n",
         winner == 0 ? "draw" :
         winner == 1 ? "green" : "blue"
     );
-    printf("%lu\n", sizeof(Game) * 240);
-    printf("%lu\n", sizeof(P));
     return 0;
 }
 

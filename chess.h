@@ -56,8 +56,8 @@ enum {BLANK, WHITE, BLACK};
 typedef U8 Color;
 
 typedef struct {
-    PieceType type;
-    Color color;
+    PieceType type: 3;
+    Color color: 2;
 } Piece;
 
 ///////////////////////////
@@ -65,27 +65,30 @@ typedef struct {
 typedef struct {
     P start;
     P end;
-    char notation[7];
+    char notation[8];
 } Move;
 
 typedef struct {
     Move *moves;
     U16 amount_of_moves;
-    U16 moves_capacity;
+    U8 moves_capacity: 4;
 
     Move *legal_moves;
     U8 amount_of_legal_moves;
-    U8 legal_moves_capacity;
+    U8 legal_moves_capacity: 3;
     
-    bool moved_king[2];
-    bool moved_rook_r[2];
-    bool moved_rook_l[2];
+    bool moved_king_w: 1;
+    bool moved_rook_r_w: 1;
+    bool moved_rook_l_w: 1;
     
-    bool check;
-    bool checkmate;
-    bool draw;
+    bool moved_king_b: 1;
+    bool moved_rook_r_b: 1;
+    bool moved_rook_l_b: 1;
+    
+    bool check: 1;
+    bool draw: 1;
 
-    Color turn;
+    Color turn: 2;
 
     Piece board[SIZE][SIZE];
 } Game;
@@ -116,6 +119,10 @@ Color play(
     U8(*p1)(const Game *),
     U8(*p2)(const Game *)
 );
+
+///////////////////////////
+
+void out_of_memory_err();
 
 #endif
 

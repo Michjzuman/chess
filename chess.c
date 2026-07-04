@@ -11,15 +11,23 @@ static const char abc[] = ABC;
 
 static void calculate_legal_moves(Game *game);
 
+void out_of_memory_err() {
+    fprintf(stderr, "Ou shiii 👀. Out of Memory");
+    exit(1);
+}
+
 static void raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
-    if (game->amount_of_moves > game->moves_capacity) {
-        game->moves_capacity *= 2;
+    U16 capacity = 1;
+    for (U8 i = 0; i < game->moves_capacity; i++) capacity *= 2;
+    if (game->amount_of_moves > capacity) {
+        game->moves_capacity += 1;
         game->moves = realloc(
-            game->moves,
-            game->moves_capacity * sizeof(Move)
+            game->moves, capacity * 2 * sizeof(Move)
         );
     }
+
+    // this is where castling will be
 
     game->board[move.end.y][move.end.x] = game->board[move.start.y][move.start.x];
     game->board[move.start.y][move.start.x] = (Piece){EMPTY, BLANK};
@@ -40,7 +48,7 @@ void is_check(Game *game) {
                     for (I8 ax = -2; ax <= 2; ax++) {
                         if (
                             x + ax >= 0 && x + ax < SIZE &&
-                            y + ay >= 0 && y + ay < SIZE && 
+                            y + ay >= 0 && y + ay < SIZE &&
                             game->board[y + ay][x + ax].color != king.color &&
                             game->board[y + ay][x + ax].color != BLANK && (
                                 (
@@ -132,22 +140,15 @@ void is_draw(Game *game) {
     }
 }
 
-void is_checkmate(Game *game) {
-    if (
-        game->amount_of_legal_moves <= 0 &&
-        game->check == true
-    ) {
-        game->checkmate = true;
-    }
-}
-
 Game copy_game(const Game *source) {
     Game copy = *source;
 
     copy.moves = malloc(copy.amount_of_moves * sizeof(Move));
+    if (copy.moves == NULL) out_of_memory_err();
     memcpy(copy.moves, source->moves, copy.amount_of_moves * sizeof(Move));
 
     copy.legal_moves = malloc(copy.amount_of_legal_moves * sizeof(Move));
+    if (copy.legal_moves == NULL) out_of_memory_err();
     memcpy(copy.legal_moves, source->legal_moves, copy.amount_of_legal_moves * sizeof(Move));
 
     for (U8 y = 0; y < SIZE; y++) {
@@ -181,22 +182,25 @@ static void add_legal_move(Game *game, Move move) {
         /*
         if (test_game.check) {
             calculate_legal_moves(&test_game);
-            is_checkmate(&test_game);
         }
         */
         close_game(&test_game);
 
         if (!self_check) {
             game->amount_of_legal_moves++;
-            if (game->legal_moves_capacity < game->amount_of_legal_moves) {
-                game->legal_moves_capacity *= 2;
+            U8 capacity = 1;
+            for (U8 i = 0; i < game->legal_moves_capacity; i++) capacity *= 2;
+            if (capacity < game->amount_of_legal_moves) {
+                game->legal_moves_capacity += 1;
                 game->legal_moves = realloc(
-                    game->legal_moves, game->legal_moves_capacity * sizeof(Move)
+                    game->legal_moves, capacity * 2 * sizeof(Move)
                 );
             }
     
             char letter_char = piece_letters[game->board[move.start.y][move.start.x].type];
             char *letter = malloc(letter_char == ' ' ? 0 : 1);
+            if (letter == NULL) out_of_memory_err();
+            
             if (letter_char != ' ') letter[0] = letter_char;
 
             bool takes = game->board[move.end.y][move.end.x].color != BLANK;
@@ -206,6 +210,7 @@ static void add_legal_move(Game *game, Move move) {
                 // duplicate notations
             );
             char *start_x = malloc(show_start_x ? 1 : 0);
+            if (start_x == NULL) out_of_memory_err();
             if (show_start_x) start_x[0] = abc[move.start.x];
 
             snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s",
@@ -216,7 +221,7 @@ static void add_legal_move(Game *game, Move move) {
                 abc[move.end.x],            // end x
                 move.end.y + 1,             // end y
                 "",                         // pawn promotion
-                test_game.checkmate ? "#" : // checkmate
+                test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
                 test_game.check ? "+" : ""  // check
             );
             free(letter);
@@ -233,14 +238,11 @@ static void calculate_legal_moves(Game *game) {
         free(game->legal_moves);
     }
     game->amount_of_legal_moves = 0;
-    game->legal_moves_capacity = 2;
+    game->legal_moves_capacity = 1;
     game->legal_moves = malloc(
-        game->legal_moves_capacity * sizeof(Move)
+        game->legal_moves_capacity * 2 * sizeof(Move)
     );
-    if (game->legal_moves == NULL) {
-        fprintf(stderr, "Ou shiii 👀. Out of Memory");
-        exit(1);
-    }
+    if (game->legal_moves == NULL) out_of_memory_err();
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -361,22 +363,43 @@ void raw_move(Game *game, Move move) {
     raw_move_minimal(game, move);
 
     if (
-        !game->moved_king[game->turn]
-        && game->board[move.start.y][move.start.x].type == KING
+        !(
+            game->turn == WHITE ?
+            game->moved_king_w : game->moved_king_b
+        ) &&
+        game->board[move.start.y][move.start.x].type == KING
     ) {
-        game->moved_king[game->turn] = true;
+        if (game->turn == WHITE) {
+            game->moved_king_w = true;
+        } else {
+            game->moved_king_b = true;
+        }
     } else if (
-        !game->moved_rook_l[game->turn] &&
+        !(
+            game->turn == WHITE ?
+            game->moved_rook_l_w : game->moved_rook_l_b
+        ) &&
         game->board[move.start.y][move.start.x].type == ROOK &&
         move.start.x == 0
     ) {
-        game->moved_rook_l[game->turn] = true;
+        if (game->turn == WHITE) {
+            game->moved_rook_l_w = true;
+        } else {
+            game->moved_rook_l_w = true;
+        }
     } else if (
-        !game->moved_rook_r[game->turn] &&
+        !(
+            game->turn == WHITE ?
+            game->moved_rook_r_w : game->moved_rook_r_b
+        ) &&
         game->board[move.start.y][move.start.x].type == ROOK &&
         move.start.x == 7
     ) {
-        game->moved_rook_r[game->turn] = true;
+        if (game->turn == WHITE) {
+            game->moved_rook_r_w = true;
+        } else {
+            game->moved_rook_r_w = true;
+        }
     }
 
     game->moves[game->amount_of_moves - 1] = move;
@@ -386,31 +409,31 @@ void raw_move(Game *game, Move move) {
     calculate_legal_moves(game);
     is_check(game);
     is_draw(game);
-    is_checkmate(game);
 }
 
 Game new_game() {
     Game game;
     
     game.amount_of_moves = 0;
-    game.moves_capacity = 2;
+    game.moves_capacity = 1;
     game.moves = malloc(
-        game.moves_capacity * sizeof(Move)
+        game.moves_capacity * 2 * sizeof(Move)
     );
+    if (game.moves == NULL) out_of_memory_err();
     game.amount_of_legal_moves = 0;
-    game.legal_moves_capacity = 2;
+    game.legal_moves_capacity = 1;
     game.legal_moves = malloc(
-        game.legal_moves_capacity * sizeof(Move)
+        game.legal_moves_capacity * 2 * sizeof(Move)
     );
+    if (game.legal_moves == NULL) out_of_memory_err();
     
-    game.moved_king[0] = false;
-    game.moved_rook_r[0] = false;
-    game.moved_rook_l[0] = false;
-    game.moved_king[1] = false;
-    game.moved_rook_r[1] = false;
-    game.moved_rook_l[1] = false;
+    game.moved_king_w = false;
+    game.moved_rook_r_w = false;
+    game.moved_rook_l_w = false;
+    game.moved_king_b = false;
+    game.moved_rook_r_b = false;
+    game.moved_rook_l_b = false;
     game.check = false;
-    game.checkmate = false;
     game.draw = false;
     game.turn = WHITE;
 
@@ -457,7 +480,7 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
     const U8 height = visualize(&game);
 
     while (true) {
-        usleep(100000);
+        usleep(10000);
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
@@ -481,7 +504,7 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
         printf("\n");
         */
 
-        if (game.checkmate) {
+        if (game.amount_of_legal_moves <= 0 && game.check) {
             close_game(&game);
             return game.turn == WHITE ? BLACK : WHITE;
         }
