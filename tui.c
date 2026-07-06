@@ -19,10 +19,10 @@ static char *notation_line(const Game *game, U16 line_y) {
         if (result == NULL) out_of_memory_err();
         snprintf(
             result, 32, "%d. %s %s                 ", y,
-            game->moves[(y - 1) * 2].notation,
+            game->moves[(y - 1) * 2],
             game->amount_of_moves % 2 == 0 ||
             game->amount_of_moves + 1 > y * 2 ?
-            game->moves[(y - 1) * 2 + 1].notation : ""
+            game->moves[(y - 1) * 2 + 1] : ""
         );
         return result;
     } else {

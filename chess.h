@@ -23,6 +23,7 @@
 #define PROMOTION_PIECES { \
     2, 3, 4, 5 \
 }
+#define MAX_MOVE_NOTATION_LEN 8
 
 ///////////////////////////
 
@@ -65,11 +66,15 @@ typedef struct {
 typedef struct {
     P start;
     P end;
-    char notation[8];
+    char notation[
+        MAX_MOVE_NOTATION_LEN
+    ];
 } Move;
 
 typedef struct {
-    Move *moves;
+    char (*moves)[
+        MAX_MOVE_NOTATION_LEN
+    ];
     U16 amount_of_moves;
     U8 moves_capacity: 4;
 

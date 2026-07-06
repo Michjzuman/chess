@@ -23,7 +23,7 @@ static void raw_move_minimal(Game *game, Move move) {
     if (game->amount_of_moves > capacity) {
         game->moves_capacity += 1;
         game->moves = realloc(
-            game->moves, capacity * 2 * sizeof(Move)
+            game->moves, capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
         );
     }
 
@@ -138,14 +138,17 @@ void is_draw(Game *game) {
         game->draw = true;
         return;
     }
+
+    // repetition detection
+
 }
 
 Game copy_game(const Game *source) {
     Game copy = *source;
 
-    copy.moves = malloc(copy.amount_of_moves * sizeof(Move));
+    copy.moves = malloc(copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
     if (copy.moves == NULL) out_of_memory_err();
-    memcpy(copy.moves, source->moves, copy.amount_of_moves * sizeof(Move));
+    memcpy(copy.moves, source->moves, copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
 
     copy.legal_moves = malloc(copy.amount_of_legal_moves * sizeof(Move));
     if (copy.legal_moves == NULL) out_of_memory_err();
@@ -240,7 +243,7 @@ static void calculate_legal_moves(Game *game) {
     game->amount_of_legal_moves = 0;
     game->legal_moves_capacity = 1;
     game->legal_moves = malloc(
-        game->legal_moves_capacity * 2 * sizeof(Move)
+        game->legal_moves_capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
     );
     if (game->legal_moves == NULL) out_of_memory_err();
 
@@ -402,7 +405,9 @@ void raw_move(Game *game, Move move) {
         }
     }
 
-    game->moves[game->amount_of_moves - 1] = move;
+    for (U8 i = 0; i < MAX_MOVE_NOTATION_LEN; i++) {
+        game->moves[game->amount_of_moves - 1][i] = move.notation[i];
+    }
 
     game->turn = game->turn == WHITE ? BLACK : WHITE;
 
@@ -417,7 +422,7 @@ Game new_game() {
     game.amount_of_moves = 0;
     game.moves_capacity = 1;
     game.moves = malloc(
-        game.moves_capacity * 2 * sizeof(Move)
+        game.moves_capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
     );
     if (game.moves == NULL) out_of_memory_err();
     game.amount_of_legal_moves = 0;
@@ -480,7 +485,7 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
     const U8 height = visualize(&game);
 
     while (true) {
-        usleep(10000);
+        usleep(100000);
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
