@@ -30,7 +30,7 @@ static void raw_move_minimal(Game *game, Move move) {
     // this is where castling will be
 
     game->board[move.end.y][move.end.x] = game->board[move.start.y][move.start.x];
-    game->board[move.start.y][move.start.x] = (Piece){EMPTY, BLANK};
+    game->board[move.start.y][move.start.x] = (Piece){.type = EMPTY};
 }
 
 void is_check(Game *game) {
@@ -50,7 +50,7 @@ void is_check(Game *game) {
                             x + ax >= 0 && x + ax < SIZE &&
                             y + ay >= 0 && y + ay < SIZE &&
                             game->board[y + ay][x + ax].color != king.color &&
-                            game->board[y + ay][x + ax].color != BLANK && (
+                            game->board[y + ay][x + ax].type != EMPTY && (
                                 (
                                     game->board[y + ay][x + ax].type == KNIGHT &&
                                     abs(ax) != abs(ay) && ax != 0 && ay != 0
@@ -85,7 +85,7 @@ void is_check(Game *game) {
                         if (
                             x + ax >= 0 && x + ax < SIZE &&
                             y + ay >= 0 && y + ay < SIZE &&
-                            game->board[y + ay][x + ax].color != BLANK
+                            game->board[y + ay][x + ax].type != EMPTY
                         ) {
                             if (
                                 game->board[y + ay][x + ax].color !=
@@ -172,8 +172,11 @@ static void add_legal_move(Game *game, Move move) {
     if (
         move.end.x >= 0 && move.end.x < SIZE &&
         move.end.y >= 0 && move.end.y < SIZE &&
-        game->board[move.start.y][move.start.x].color !=
-        game->board[move.end.y][move.end.x].color &&
+        (
+            game->board[move.start.y][move.start.x].color !=
+            game->board[move.end.y][move.end.x].color ||
+            game->board[move.end.y][move.end.x].type == EMPTY
+        ) &&
         game->board[move.start.y][move.start.x].color == game->turn
     ) {
         Game test_game = copy_game(game);
@@ -206,7 +209,7 @@ static void add_legal_move(Game *game, Move move) {
             
             if (letter_char != ' ') letter[0] = letter_char;
 
-            bool takes = game->board[move.end.y][move.end.x].color != BLANK;
+            bool takes = game->board[move.end.y][move.end.x].type != EMPTY;
 
             bool show_start_x = (
                 (game->board[move.start.y][move.start.x].type == PAWN && takes)
@@ -279,7 +282,7 @@ static void calculate_legal_moves(Game *game) {
                         square.color == WHITE ? 1 : -1
                     );
 
-                    if (game->board[y + ay][x].color == BLANK) {
+                    if (game->board[y + ay][x].type == EMPTY) {
                         if (y == (square.color == WHITE ? 6 : 1)) {
                             // Promotion
 
@@ -294,7 +297,7 @@ static void calculate_legal_moves(Game *game) {
                         }
                         
                         if (y == (square.color == WHITE ? 1 : 6)) {
-                            if (game->board[y + ay * 2][x].color == BLANK) {
+                            if (game->board[y + ay * 2][x].type == EMPTY) {
                                 add_legal_move(game, (Move){
                                     (P){x, y}, (P){x, y + ay * 2}
                                 });
@@ -303,7 +306,7 @@ static void calculate_legal_moves(Game *game) {
                     }
                     for (I8 ax = -1; ax <= 1; ax += 2) {
                         if (
-                            game->board[y + ay][x + ax].color != BLANK &&
+                            game->board[y + ay][x + ax].type != EMPTY &&
                             game->board[y + ay][x + ax].color !=
                             square.color
                         ) {
@@ -339,7 +342,7 @@ static void calculate_legal_moves(Game *game) {
                                 (P){x, y}, (P){x + ax, y + ay}
                             });
                             if (
-                                game->board[y + ay][x + ax].color != BLANK
+                                game->board[y + ay][x + ax].type != EMPTY
                             ) break;
                         }
                     }
@@ -457,7 +460,7 @@ Game new_game() {
                     ),
                     y == 0 ? WHITE : BLACK
                 } :
-                (Piece){EMPTY, BLANK}
+                (Piece){.type = EMPTY}
             );
         }
     }
@@ -511,11 +514,11 @@ Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Ga
 
         if (game.amount_of_legal_moves <= 0 && game.check) {
             close_game(&game);
-            return game.turn == WHITE ? BLACK : WHITE;
+            return game.turn == WHITE ? 2 : 1;
         }
         if (game.draw) {
             close_game(&game);
-            return BLANK;
+            return 0;
         }
     }
 }

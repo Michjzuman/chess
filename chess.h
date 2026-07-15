@@ -53,7 +53,7 @@ enum {
 };
 typedef U8 PieceType;
 
-enum {BLANK, WHITE, BLACK};
+enum {WHITE, BLACK};
 typedef U8 Color;
 
 typedef struct {

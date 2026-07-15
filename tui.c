@@ -9,6 +9,8 @@ static const char abc[] = ABC;
 
 static const char symbols[] = " PNBRQK";
 
+U8 max_notation_len = 0;
+
 static char *notation_line(const Game *game, U16 line_y) {
     if (game->amount_of_moves + 1 >= line_y * 2) {
         U16 y = (
@@ -18,11 +20,20 @@ static char *notation_line(const Game *game, U16 line_y) {
         char *result = malloc(32);
         if (result == NULL) out_of_memory_err();
         snprintf(
-            result, 32, "%d. %s %s                 ", y,
+            result, 32, "%d. %s %s", y,
             game->moves[(y - 1) * 2],
             game->amount_of_moves % 2 == 0 ||
             game->amount_of_moves + 1 > y * 2 ?
             game->moves[(y - 1) * 2 + 1] : ""
+        );
+        if (strlen(result) > max_notation_len) {
+            max_notation_len = strlen(result);
+        }
+        U8 spaces_len = max_notation_len - strlen(result);
+        char *spaces = malloc(spaces_len);
+        for (U8 i = 0; i < spaces_len; i++) spaces[i] = ' ';
+        snprintf(
+            result, 32, "%s%s", result, spaces
         );
         return result;
     } else {
@@ -64,7 +75,7 @@ static void draw_game_full(
         } else {
             printf("\n\033[90m└");
             for (U8 x = 0; x < SIZE - 1; x++) printf("───┴");
-            printf("───┘\n");
+            printf("───┘\n ");
             for (U8 x = 0; x < SIZE; x++) printf(
                 " %s%c  ",
                 cursor.x == x && show_cursor ? "\033[0m" : "\033[90m",
