@@ -58,8 +58,18 @@ typedef U8 Color;
 
 typedef struct {
     PieceType type: 3;
-    Color color: 2;
+    Color color: 1;
 } Piece;
+
+typedef union {
+    Piece Piece;
+    U8 U8;
+} PieceObject;
+
+typedef struct {
+    U8 left: 4;
+    U8 right: 4;
+} TwoPieces;
 
 ///////////////////////////
 
@@ -93,10 +103,12 @@ typedef struct {
     bool check: 1;
     bool draw: 1;
 
-    Color turn: 2;
+    Color turn: 1;
 
-    Piece board[SIZE][SIZE];
+    TwoPieces board[SIZE][SIZE / 2];
 } Game;
+
+Piece xy(const Game *game, U8 x, U8 y);
 
 ///////////////////////////
 
@@ -119,7 +131,7 @@ bool do_move(
     char *notation
 );
 
-Color play(
+U8 play(
     U8(*visualize)(const Game *),
     U8(*p1)(const Game *),
     U8(*p2)(const Game *)

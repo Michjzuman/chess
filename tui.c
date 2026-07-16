@@ -54,8 +54,8 @@ static void draw_game_full(
             printf(
                 "\033[90m│\033[0m%c%s%c\033[0m%c",
                 cursor.x == x && cursor.y == y && show_cursor ? '[' : ' ',
-                game->board[y][x].color == WHITE ? "\033[32m" : "\033[34m",
-                symbols[game->board[y][x].type],
+                xy(game, x, y).color == WHITE ? "\033[32m" : "\033[34m",
+                symbols[xy(game, x, y).type],
                 cursor.x == x && cursor.y == y && show_cursor ? ']' : ' '
             );
         }
@@ -91,10 +91,10 @@ U8 draw_game_small(const Game *game) {
         for (U8 x = 0; x < SIZE; x++) {
             printf(
                 "%s%c\033[0m ",
-                game->board[y][x].color == WHITE ? "\033[32m" :
-                game->board[y][x].color == BLACK ? "\033[34m" : "\033[90m",
-                symbols[game->board[y][x].type] == ' ' ? '.' :
-                symbols[game->board[y][x].type]
+                xy(game, x, y).color == WHITE ? "\033[32m" :
+                xy(game, x, y).color == BLACK ? "\033[34m" : "\033[90m",
+                symbols[xy(game, x, y).type] == ' ' ? '.' :
+                symbols[xy(game, x, y).type]
             );
         }
         printf("\n");

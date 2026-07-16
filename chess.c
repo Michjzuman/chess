@@ -16,6 +16,21 @@ void out_of_memory_err() {
     exit(1);
 }
 
+Piece xy(const Game *game, U8 x, U8 y) {
+    TwoPieces loc = game->board[y][x/2];
+    U8 piece_U8 = x % 2 == 0 ? loc.left : loc.right;
+    return (PieceObject){.U8 = piece_U8}.Piece;
+}
+
+void set_xy(const Game *game, U8 x, U8 y, Piece new) {
+    TwoPieces *loc = (TwoPieces *)&game->board[y][x/2];
+    if (x % 2 == 0) {
+        loc->left = (PieceObject){.Piece = new}.U8;
+    } else {
+        loc->right = (PieceObject){.Piece = new}.U8;
+    }
+}
+
 static void raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
     U16 capacity = 1;
@@ -29,8 +44,8 @@ static void raw_move_minimal(Game *game, Move move) {
 
     // this is where castling will be
 
-    game->board[move.end.y][move.end.x] = game->board[move.start.y][move.start.x];
-    game->board[move.start.y][move.start.x] = (Piece){.type = EMPTY};
+    set_xy(game, move.end.x, move.end.y, xy(game, move.start.x, move.start.y));
+    set_xy(game, move.start.x, move.start.y, (Piece){.type = EMPTY});
 }
 
 void is_check(Game *game) {
@@ -39,26 +54,26 @@ void is_check(Game *game) {
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
             if (
-                game->board[y][x].type == KING &&
-                game->board[y][x].color == game->turn
+                xy(game, x, y).type == KING &&
+                xy(game, x, y).color == game->turn
             ) {
-                Piece king = game->board[y][x];
+                Piece king = xy(game, x, y);
 
                 for (I8 ay = -2; ay <= 2; ay++) {
                     for (I8 ax = -2; ax <= 2; ax++) {
                         if (
                             x + ax >= 0 && x + ax < SIZE &&
                             y + ay >= 0 && y + ay < SIZE &&
-                            game->board[y + ay][x + ax].color != king.color &&
-                            game->board[y + ay][x + ax].type != EMPTY && (
+                            xy(game, x + ax, y + ay).color != king.color &&
+                            xy(game, x + ax, y + ay).type != EMPTY && (
                                 (
-                                    game->board[y + ay][x + ax].type == KNIGHT &&
+                                    xy(game, x + ax, y + ay).type == KNIGHT &&
                                     abs(ax) != abs(ay) && ax != 0 && ay != 0
                                 ) || (
-                                    game->board[y + ay][x + ax].type == PAWN &&
+                                    xy(game, x + ax, y + ay).type == PAWN &&
                                     abs(ax) == 1 && ay == (king.color == WHITE ? 1 : -1)
                                 ) || (
-                                    game->board[y + ay][x + ax].type == KING &&
+                                    xy(game, x + ax, y + ay).type == KING &&
                                     abs(ax) <= 1 && abs(ay) <= 1
                                 )
                             )
@@ -85,18 +100,18 @@ void is_check(Game *game) {
                         if (
                             x + ax >= 0 && x + ax < SIZE &&
                             y + ay >= 0 && y + ay < SIZE &&
-                            game->board[y + ay][x + ax].type != EMPTY
+                            xy(game, x + ax, y + ay).type != EMPTY
                         ) {
                             if (
-                                game->board[y + ay][x + ax].color !=
+                                xy(game, x + ax, y + ay).color !=
                                 king.color && (
                                     (
                                         abs(ax) == abs(ay) &&
-                                        game->board[y + ay][x + ax].type == BISHOP
+                                        xy(game, x + ax, y + ay).type == BISHOP
                                     ) || (
                                         abs(ax) != abs(ay) &&
-                                        game->board[y + ay][x + ax].type == ROOK
-                                    ) || game->board[y + ay][x + ax].type == QUEEN
+                                        xy(game, x + ax, y + ay).type == ROOK
+                                    ) || xy(game, x + ax, y + ay).type == QUEEN
                                 )
                             ) game->check = true;
                             break;
@@ -126,8 +141,8 @@ void is_draw(Game *game) {
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
             if (
-                game->board[y][x].type != KING &&
-                game->board[y][x].type != EMPTY
+                xy(game, x, y).type != KING &&
+                xy(game, x, y).type != EMPTY
             ) {
                 only_kings = false;
             }
@@ -173,11 +188,11 @@ static void add_legal_move(Game *game, Move move) {
         move.end.x >= 0 && move.end.x < SIZE &&
         move.end.y >= 0 && move.end.y < SIZE &&
         (
-            game->board[move.start.y][move.start.x].color !=
-            game->board[move.end.y][move.end.x].color ||
-            game->board[move.end.y][move.end.x].type == EMPTY
+            xy(game, move.start.x, move.start.y).color !=
+            xy(game, move.end.x, move.end.y).color ||
+            xy(game, move.end.x, move.end.y).type == EMPTY
         ) &&
-        game->board[move.start.y][move.start.x].color == game->turn
+        xy(game, move.start.x, move.start.y).color == game->turn
     ) {
         Game test_game = copy_game(game);
         raw_move_minimal(&test_game, move);
@@ -203,16 +218,16 @@ static void add_legal_move(Game *game, Move move) {
                 );
             }
     
-            char letter_char = piece_letters[game->board[move.start.y][move.start.x].type];
+            char letter_char = piece_letters[xy(game, move.start.x, move.start.y).type];
             char *letter = malloc(letter_char == ' ' ? 0 : 1);
             if (letter == NULL) out_of_memory_err();
             
             if (letter_char != ' ') letter[0] = letter_char;
 
-            bool takes = game->board[move.end.y][move.end.x].type != EMPTY;
+            bool takes = xy(game, move.end.x, move.end.y).type != EMPTY;
 
             bool show_start_x = (
-                (game->board[move.start.y][move.start.x].type == PAWN && takes)
+                (xy(game, move.start.x, move.start.y).type == PAWN && takes)
                 // duplicate notations
             );
             char *start_x = malloc(show_start_x ? 1 : 0);
@@ -252,7 +267,7 @@ static void calculate_legal_moves(Game *game) {
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
-            Piece square = game->board[y][x];
+            Piece square = xy(game, x, y);
             if (square.type > 0) {
                 if (square.type == KING) {
                     for (I8 ay = -1; ay <= 1; ay++) {
@@ -282,7 +297,7 @@ static void calculate_legal_moves(Game *game) {
                         square.color == WHITE ? 1 : -1
                     );
 
-                    if (game->board[y + ay][x].type == EMPTY) {
+                    if (xy(game, x, y + ay).type == EMPTY) {
                         if (y == (square.color == WHITE ? 6 : 1)) {
                             // Promotion
 
@@ -297,7 +312,7 @@ static void calculate_legal_moves(Game *game) {
                         }
                         
                         if (y == (square.color == WHITE ? 1 : 6)) {
-                            if (game->board[y + ay * 2][x].type == EMPTY) {
+                            if (xy(game, x, y + ay * 2).type == EMPTY) {
                                 add_legal_move(game, (Move){
                                     (P){x, y}, (P){x, y + ay * 2}
                                 });
@@ -306,8 +321,8 @@ static void calculate_legal_moves(Game *game) {
                     }
                     for (I8 ax = -1; ax <= 1; ax += 2) {
                         if (
-                            game->board[y + ay][x + ax].type != EMPTY &&
-                            game->board[y + ay][x + ax].color !=
+                            xy(game, x + ax, y + ay).type != EMPTY &&
+                            xy(game, x + ax, y + ay).color !=
                             square.color
                         ) {
                             add_legal_move(game, (Move){
@@ -342,7 +357,7 @@ static void calculate_legal_moves(Game *game) {
                                 (P){x, y}, (P){x + ax, y + ay}
                             });
                             if (
-                                game->board[y + ay][x + ax].type != EMPTY
+                                xy(game, x + ax, y + ay).type != EMPTY
                             ) break;
                         }
                     }
@@ -354,12 +369,12 @@ static void calculate_legal_moves(Game *game) {
     // Castling
     const U8 y = game->turn == WHITE ? 0 : 7;
     if (
-        game->board[y][4].type == KING &&
-        game->board[y][4].color == game->turn &&
-        game->board[y][5].type == EMPTY &&
-        game->board[y][6].type == EMPTY &&
-        game->board[y][7].type == ROOK &&
-        game->board[y][7].color != game->turn
+        xy(game, 4, y).type == KING &&
+        xy(game, 4, y).color == game->turn &&
+        xy(game, 5, y).type == EMPTY &&
+        xy(game, 6, y).type == EMPTY &&
+        xy(game, 7, y).type == ROOK &&
+        xy(game, 7, y).color != game->turn
     ) {
         
     }
@@ -373,7 +388,7 @@ void raw_move(Game *game, Move move) {
             game->turn == WHITE ?
             game->moved_king_w : game->moved_king_b
         ) &&
-        game->board[move.start.y][move.start.x].type == KING
+        xy(game, move.start.x, move.start.y).type == KING
     ) {
         if (game->turn == WHITE) {
             game->moved_king_w = true;
@@ -385,7 +400,7 @@ void raw_move(Game *game, Move move) {
             game->turn == WHITE ?
             game->moved_rook_l_w : game->moved_rook_l_b
         ) &&
-        game->board[move.start.y][move.start.x].type == ROOK &&
+        xy(game, move.start.x, move.start.y).type == ROOK &&
         move.start.x == 0
     ) {
         if (game->turn == WHITE) {
@@ -398,7 +413,7 @@ void raw_move(Game *game, Move move) {
             game->turn == WHITE ?
             game->moved_rook_r_w : game->moved_rook_r_b
         ) &&
-        game->board[move.start.y][move.start.x].type == ROOK &&
+        xy(game, move.start.x, move.start.y).type == ROOK &&
         move.start.x == 7
     ) {
         if (game->turn == WHITE) {
@@ -447,7 +462,7 @@ Game new_game() {
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
-            game.board[y][x] = (
+            set_xy(&game, x, y,
                 y == 1 || y == SIZE - 2 ? (Piece){
                     PAWN, y == 1 ? WHITE : BLACK
                 } :
@@ -480,7 +495,7 @@ bool do_move(Game *game, char *notation) {
     return false;
 }
 
-Color play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
+U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
     srand(time(NULL));
 
     Game game = new_game();
