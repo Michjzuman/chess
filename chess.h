@@ -110,6 +110,8 @@ typedef struct {
 
 Piece xy(const Game *game, U8 x, U8 y);
 
+void set_xy(Game *game, U8 x, U8 y, Piece new);
+
 ///////////////////////////
 
 typedef struct {
@@ -123,6 +125,8 @@ Game new_game();
 Game copy_game(
     const Game *source
 );
+
+void close_game(Game *game);
 
 void is_check(Game *game);
 

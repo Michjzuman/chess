@@ -91,8 +91,8 @@ U8 draw_game_small(const Game *game) {
         for (U8 x = 0; x < SIZE; x++) {
             printf(
                 "%s%c\033[0m ",
-                xy(game, x, y).color == WHITE ? "\033[32m" :
-                xy(game, x, y).color == BLACK ? "\033[34m" : "\033[90m",
+                xy(game, x, y).type == EMPTY ? "\033[90m" :
+                xy(game, x, y).color == WHITE ? "\033[32m" : "\033[34m",
                 symbols[xy(game, x, y).type] == ' ' ? '.' :
                 symbols[xy(game, x, y).type]
             );

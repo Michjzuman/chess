@@ -9,7 +9,9 @@ static const U8 piece_values[] = PIECE_VALUES;
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
-static void calculate_legal_moves(Game *game);
+void calculate_legal_moves(Game *game);
+
+void raw_move(Game *game, Move move);
 
 void out_of_memory_err() {
     fprintf(stderr, "Ou shiii 👀. Out of Memory");
@@ -22,8 +24,8 @@ Piece xy(const Game *game, U8 x, U8 y) {
     return (PieceObject){.U8 = piece_U8}.Piece;
 }
 
-void set_xy(const Game *game, U8 x, U8 y, Piece new) {
-    TwoPieces *loc = (TwoPieces *)&game->board[y][x/2];
+void set_xy(Game *game, U8 x, U8 y, Piece new) {
+    TwoPieces *loc = &game->board[y][x/2];
     if (x % 2 == 0) {
         loc->left = (PieceObject){.Piece = new}.U8;
     } else {
@@ -31,7 +33,7 @@ void set_xy(const Game *game, U8 x, U8 y, Piece new) {
     }
 }
 
-static void raw_move_minimal(Game *game, Move move) {
+void raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
     U16 capacity = 1;
     for (U8 i = 0; i < game->moves_capacity; i++) capacity *= 2;
@@ -156,6 +158,59 @@ void is_draw(Game *game) {
 
     // repetition detection
 
+    Game test_game = new_game();
+
+    TwoPieces (*positions)[SIZE][SIZE / 2] = malloc(
+        game->amount_of_moves * sizeof(TwoPieces) * SIZE * (SIZE / 2)
+    );
+    if (positions == NULL) out_of_memory_err();
+
+    for (U16 i1 = 0; i1 < game->amount_of_moves; i1++) {
+        bool works = false;
+        for (U8 i = 0; i < test_game.amount_of_legal_moves; i++) {
+            if (strcmp(test_game.legal_moves[i].notation, game->moves[i1]) == 0) {
+                raw_move_minimal(&test_game, test_game.legal_moves[i]);
+                works = true;
+                break;
+            }
+        }
+        if (!works) {
+            fprintf(stderr, "what!?!?!?\n");
+            exit(1);
+        }
+        test_game.turn = test_game.turn == WHITE ? BLACK : WHITE;
+        calculate_legal_moves(&test_game);
+        is_check(&test_game);
+
+        for (U8 y = 0; y < SIZE; y++) {
+            for (U8 x = 0; x < SIZE / 2; x++) {
+                positions[i1][y][x] = test_game.board[y][x];
+            }
+        }
+        U8 count_sames = 0;
+        for (U16 i2 = 0; i2 < i1; i2++) {
+            bool same = true;
+            for (U8 y = 0; y < SIZE; y++) {
+                for (U8 x = 0; x < SIZE / 2; x++) {
+                    if (
+                        positions[i1][y][x].left != positions[i2][y][x].left ||
+                        positions[i1][y][x].right != positions[i2][y][x].right
+                    ) {
+                        same = false;
+                        break;
+                    }
+                }
+                if (!same) break;
+            }
+            if (same) count_sames++;
+            if (count_sames >= 2) {
+                game->draw = true;
+                return;
+            }
+        }
+    }
+    free(positions);
+    close_game(&test_game);
 }
 
 Game copy_game(const Game *source) {
@@ -183,7 +238,7 @@ void close_game(Game *game) {
     free(game->legal_moves);
 }
 
-static void add_legal_move(Game *game, Move move) {
+void add_legal_move(Game *game, Move move) {
     if (
         move.end.x >= 0 && move.end.x < SIZE &&
         move.end.y >= 0 && move.end.y < SIZE &&
@@ -242,7 +297,7 @@ static void add_legal_move(Game *game, Move move) {
                 abc[move.end.x],            // end x
                 move.end.y + 1,             // end y
                 "",                         // pawn promotion
-                test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
+                //test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
                 test_game.check ? "+" : ""  // check
             );
             free(letter);
@@ -254,7 +309,7 @@ static void add_legal_move(Game *game, Move move) {
     }
 }
 
-static void calculate_legal_moves(Game *game) {
+void calculate_legal_moves(Game *game) {
     if (game->amount_of_legal_moves > 0) {
         free(game->legal_moves);
     }
@@ -503,7 +558,7 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
     const U8 height = visualize(&game);
 
     while (true) {
-        usleep(100000);
+        //usleep(1000);
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
