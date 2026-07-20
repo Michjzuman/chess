@@ -562,6 +562,8 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
 
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
+        if (height > 0) printf("\033[%dF", height);
+
         char *notation = game.legal_moves[player(&game)].notation;
 
         bool legal = do_move(&game, notation);
@@ -572,7 +574,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
             return 0;
         };
         
-        if (height > 0) printf("\033[%dF", height);
         visualize(&game);
 
         /*
@@ -598,7 +599,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
 * 
 * Draw:
 *   50-move rule
-*   3-time repetion
 *   insufficient material
 * 
 * Promotion

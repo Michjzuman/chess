@@ -1,4 +1,5 @@
 #include "chess.h"
+#include "tui.h"
 
 /////////////////////////////////////////
 ///[ tui.c ]/////////////////////////////
@@ -9,7 +10,9 @@ static const char abc[] = ABC;
 
 static const char symbols[] = " PNBRQK";
 
-U8 max_notation_len = 0;
+static U8 max_notation_len = 0;
+
+static P start_cursor[2] = {{4, 1}, {4, 6}};
 
 static char *notation_line(const Game *game, U16 line_y) {
     if (game->amount_of_moves + 1 >= line_y * 2) {
@@ -42,21 +45,54 @@ static char *notation_line(const Game *game, U16 line_y) {
     }
 }
 
+static struct termios original_terminal;
+
 static void draw_game_full(
     const Game *game,
-    P cursor, bool show_cursor
+    P cursor, bool show_cursor,
+    P *marks, U8 amount_of_marks, P main_mark, bool show_marks
 ) {
     printf("\n\033[90m┌");
     for (U8 x = 0; x < SIZE - 1; x++) printf("───┬");
     printf("───┐\033[0m\n");
     for (I8 y = SIZE - 1; y >= 0; y--) {
         for (U8 x = 0; x < SIZE; x++) {
+            bool marked = false;
+            for (U8 i = 0; i < amount_of_marks; i++) {
+                if (marks[i].x == x && marks[i].y == y) {
+                    marked = true;
+                    break;
+                }
+            }
+            bool bold = ((
+                xy(game, x, y).type != EMPTY &&
+                cursor.x == x && cursor.y == y &&
+                xy(game, x, y).color == game->turn
+            ) || (
+                show_marks && main_mark.x == x && main_mark.y == y &&
+                marked
+            ));
+            bool star = (
+                marked && symbols[xy(game, x, y).type] == ' '
+            );
+            bool is_cursor = ((
+                show_cursor && cursor.x == x && cursor.y == y
+            ) || (
+                show_marks && main_mark.x == x && main_mark.y == y
+            ));
             printf(
-                "\033[90m│\033[0m%c%s%c\033[0m%c",
-                cursor.x == x && cursor.y == y && show_cursor ? '[' : ' ',
-                xy(game, x, y).color == WHITE ? "\033[32m" : "\033[34m",
-                symbols[xy(game, x, y).type],
-                cursor.x == x && cursor.y == y && show_cursor ? ']' : ' '
+                "\033[90m│\033[0m%s%s%s%c%s%c%s%s%c",
+                show_marks ? "\033[90m" : "",
+                bold ? "\033[1m" : "",
+                marked ? "\033[31m" : "",
+                is_cursor ? '[' : ' ',
+                marked ? "" : (
+                    xy(game, x, y).color == WHITE ? "\033[32m" : "\033[34m"
+                ),
+                star ? '*' : symbols[xy(game, x, y).type],
+                bold ? "\033[1m" : "",
+                marked ? "" : (show_marks ? "\033[90m" : "\033[0m"),
+                is_cursor ? ']' : ' '
             );
         }
         char *notation = notation_line(game, (SIZE - y) * 2 - 1);
@@ -86,6 +122,20 @@ static void draw_game_full(
     printf("\033[0m\n\n");
 }
 
+
+void restore_terminal() {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_terminal);
+}
+
+void enable_raw_mode() {
+    tcgetattr(STDIN_FILENO, &original_terminal);
+    atexit(restore_terminal);
+    struct termios raw = original_terminal;
+    raw.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+
 U8 draw_game_small(const Game *game) {
     for (I8 y = SIZE - 1; y >= 0; y--) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -103,21 +153,141 @@ U8 draw_game_small(const Game *game) {
 }
 
 U8 draw_game(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false);
+    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false);
     return SIZE * 2 + 4;
 }
 
+U8 tui(const Game *game) {
+    return draw_game(game);
+}
+
 U8 draw_game_testing(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false);
+    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false);
     return 0;
 }
 
 U8 draw_game_with_cursor(const Game *game, P cursor) {
-    draw_game_full(game, cursor, true);
+    draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false);
+    return SIZE * 2 + 4;
+}
+
+U8 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks) {
+    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true);
     return SIZE * 2 + 4;
 }
 
 
 U8 human(const Game *game) {
+    P cursor = start_cursor[game->turn];
+    bool selected = false;
+    const U8 height = draw_game_with_cursor(game, cursor);
+    P *marks;
+    P main_mark;
+    U8 amount_of_marks;
+    U8 move;
+    enable_raw_mode();
+    while (true) {
+        if (height > 0) printf("\033[%dF", height);
+        if (selected) {
+            draw_game_with_cursor_and_marks(
+                game, cursor, marks, main_mark, amount_of_marks
+            );
+        } else {
+            draw_game_with_cursor(game, cursor);
+        }
+        int key = getchar();
+        if (key == '\r' || key == '\n' || key == ' ') {
+            if (selected) {
+                bool legal = false;
+                for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+                    if (
+                        game->legal_moves[i].start.x == cursor.x &&
+                        game->legal_moves[i].start.y == cursor.y &&
+                        game->legal_moves[i].end.x == main_mark.x &&
+                        game->legal_moves[i].end.y == main_mark.y
+                    ) {
+                        move = i;
+                        legal = true;
+                        break;
+                    }
+                }
+                if (legal) {
+                    if (height > 0) printf("\033[%dF", height);
+                    start_cursor[game->turn] = main_mark;
+                    return move;
+                }
+            } else if (
+                xy(game, cursor.x, cursor.y).color == game->turn &&
+                xy(game, cursor.x, cursor.y).type != EMPTY
+            ) {
+                marks = malloc(0);
+                amount_of_marks = 0;
+                for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+                    if (
+                        game->legal_moves[i].start.x == cursor.x &&
+                        game->legal_moves[i].start.y == cursor.y
+                    ) {
+                        if (amount_of_marks == 0) move = i;
+                        amount_of_marks++;
+                        marks = realloc(marks, amount_of_marks * sizeof(P));
+                        marks[amount_of_marks - 1] = game->legal_moves[i].end;
+                    }
+                }
+                main_mark = cursor;
+                if (amount_of_marks == 0) {
+                    free(marks);
+                } else {
+                    selected = true;
+                }
+            }
+        }
+        if (key == 27) {
+            int second = getchar();
+            if (selected && second == 27) {
+                free(marks);
+                selected = false;
+            }
+            if (second == '[') {
+                int third = getchar();
+                if (selected) {
+                    if (
+                        third == 'A' || third == 'B' ||
+                        third == 'C' || third == 'D'
+                    ) {
+                        switch (third) {
+                            case 'A':
+                                if (main_mark.y < SIZE - 1) main_mark.y++;
+                                break;
+                            case 'B':
+                                if (main_mark.y > 0) main_mark.y--;
+                                break;
+                            case 'C':
+                                if (main_mark.x < SIZE - 1) main_mark.x++;
+                                break;
+                            case 'D':
+                                if (main_mark.x > 0) main_mark.x--;
+                                break;
+                        }
+                    }
+                } else {
+                    switch (third) {
+                        case 'A':
+                            if (cursor.y < SIZE - 1) cursor.y++;
+                            break;
+                        case 'B':
+                            if (cursor.y > 0) cursor.y--;
+                            break;
+                        case 'C':
+                            if (cursor.x < SIZE - 1) cursor.x++;
+                            break;
+                        case 'D':
+                            if (cursor.x > 0) cursor.x--;
+                            break;
+                    }
+                }
+            }
+        }
+    }
     return 0;
 }
+
