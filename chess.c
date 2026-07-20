@@ -44,10 +44,19 @@ void raw_move_minimal(Game *game, Move move) {
         );
     }
 
+    bool en_passant = (
+        xy(game, move.start.x, move.start.y).type == PAWN &&
+        move.start.x != move.end.x &&
+        xy(game, move.end.x, move.end.y).type == EMPTY
+    );
+
     // this is where castling will be
 
     set_xy(game, move.end.x, move.end.y, xy(game, move.start.x, move.start.y));
     set_xy(game, move.start.x, move.start.y, (Piece){.type = EMPTY});
+    if (en_passant) {
+        set_xy(game, move.end.x, move.start.y, (Piece){.type = EMPTY});
+    }
 }
 
 void is_check(Game *game) {
@@ -374,11 +383,22 @@ void calculate_legal_moves(Game *game) {
                             }
                         }
                     }
+                    if (y == (square.color == WHITE ? 4 : 3)) {
+                        for (I8 ax = -1; ax <= 1; ax += 2) {
+                            if (
+                                xy(game, x + ax, y).type != EMPTY &&
+                                xy(game, x + ax, y).color != square.color
+                            ) {
+                                add_legal_move(game, (Move){
+                                    (P){x, y}, (P){x + ax, y + ay}
+                                });
+                            }
+                        }
+                    }
                     for (I8 ax = -1; ax <= 1; ax += 2) {
                         if (
                             xy(game, x + ax, y + ay).type != EMPTY &&
-                            xy(game, x + ax, y + ay).color !=
-                            square.color
+                            xy(game, x + ax, y + ay).color != square.color
                         ) {
                             add_legal_move(game, (Move){
                                 (P){x, y}, (P){x + ax, y + ay}
@@ -603,7 +623,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
 * 
 * Promotion
 * Castling
-* En Passant
 * Resignation & Remis
 * 
 \* --- ---- ---- --- */
