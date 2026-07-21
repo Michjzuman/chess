@@ -50,6 +50,13 @@ void raw_move_minimal(Game *game, Move move) {
         xy(game, move.end.x, move.end.y).type == EMPTY
     );
 
+    game->en_passant_line_plus1 = (
+        (
+            abs(move.start.y - move.end.y) >= 2 &&
+            xy(game, move.start.x, move.start.y).type == PAWN
+        ) ? move.start.x + 1 : 0
+    );
+
     // this is where castling will be
 
     set_xy(game, move.end.x, move.end.y, xy(game, move.start.x, move.start.y));
@@ -502,13 +509,6 @@ void raw_move(Game *game, Move move) {
     for (U8 i = 0; i < MAX_MOVE_NOTATION_LEN; i++) {
         game->moves[game->amount_of_moves - 1][i] = move.notation[i];
     }
-
-    game->en_passant_line_plus1 = (
-        (
-            abs(move.start.y - move.end.y) >= 2 &&
-            xy(game, move.end.x, move.end.y).type == PAWN
-        ) ? move.start.x + 1 : 0
-    );
 
     game->turn = game->turn == WHITE ? BLACK : WHITE;
 
