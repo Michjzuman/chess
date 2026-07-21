@@ -386,6 +386,7 @@ void calculate_legal_moves(Game *game) {
                     if (y == (square.color == WHITE ? 4 : 3)) {
                         for (I8 ax = -1; ax <= 1; ax += 2) {
                             if (
+                                game->en_passant_line_plus1 == x + ax + 1 &&
                                 xy(game, x + ax, y).type != EMPTY &&
                                 xy(game, x + ax, y).color != square.color
                             ) {
@@ -502,6 +503,13 @@ void raw_move(Game *game, Move move) {
         game->moves[game->amount_of_moves - 1][i] = move.notation[i];
     }
 
+    game->en_passant_line_plus1 = (
+        (
+            abs(move.start.y - move.end.y) >= 2 &&
+            xy(game, move.end.x, move.end.y).type == PAWN
+        ) ? move.start.x + 1 : 0
+    );
+
     game->turn = game->turn == WHITE ? BLACK : WHITE;
 
     calculate_legal_moves(game);
@@ -534,6 +542,7 @@ Game new_game() {
     game.check = false;
     game.draw = false;
     game.turn = WHITE;
+    game.en_passant_line_plus1 = 0;
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
