@@ -50,10 +50,9 @@ void raw_move_minimal(Game *game, Move move) {
         xy(game, move.end.x, move.end.y).type == EMPTY
     );
 
-    bool small_castling = (
-        xy(game, move.start.x, move.start.y).type == KING &&
-        move.end.x - move.start.x == 2
-    );
+    bool is_king = xy(game, move.start.x, move.start.y).type == KING;
+    bool short_castling = is_king && move.end.x - move.start.x == 2;
+    bool long_castling = is_king && move.end.x - move.start.x == -2;
 
     game->en_passant_line_plus1 = (
         (
@@ -62,17 +61,20 @@ void raw_move_minimal(Game *game, Move move) {
         ) ? move.start.x + 1 : 0
     );
 
-    // this is where castling will be
-
     set_xy(game, move.end.x, move.end.y, xy(game, move.start.x, move.start.y));
     set_xy(game, move.start.x, move.start.y, (Piece){.type = EMPTY});
     if (en_passant) {
         set_xy(game, move.end.x, move.start.y, (Piece){.type = EMPTY});
     }
-    if (small_castling) {
+    if (short_castling) {
         const U8 y = game->turn == WHITE ? 0 : 7;
         set_xy(game, 5, y, xy(game, 7, y));
         set_xy(game, 7, y, (Piece){.type = EMPTY});
+    }
+    if (long_castling) {
+        const U8 y = game->turn == WHITE ? 0 : 7;
+        set_xy(game, 3, y, xy(game, 7, y));
+        set_xy(game, 0, y, (Piece){.type = EMPTY});
     }
 }
 
@@ -479,22 +481,39 @@ void calculate_legal_moves(Game *game) {
     const U8 y = game->turn == WHITE ? 0 : 7;
     if (
         xy(game, 4, y).type == KING &&
-        xy(game, 4, y).color == game->turn &&
-        xy(game, 5, y).type == EMPTY &&
-        xy(game, 6, y).type == EMPTY &&
-        xy(game, 7, y).type == ROOK &&
-        xy(game, 7, y).color == game->turn && (
+        xy(game, 4, y).color == game->turn && (
             (!game->moved_king_w && game->turn == WHITE) ||
             (!game->moved_king_b && game->turn == BLACK)
-        ) && (
-            (!game->moved_rook_r_w && game->turn == WHITE) ||
-            (!game->moved_rook_r_b && game->turn == BLACK)
-        ) && !game->check &&
-        game->king_can_go_right
+        ) && !game->check
     ) {
-        add_legal_move(game, (Move){
-            (P){4, y}, (P){6, y}, "O-O"
-        });
+        if (
+            xy(game, 5, y).type == EMPTY &&
+            xy(game, 6, y).type == EMPTY &&
+            xy(game, 7, y).type == ROOK &&
+            xy(game, 7, y).color == game->turn && (
+                (!game->moved_rook_r_w && game->turn == WHITE) ||
+                (!game->moved_rook_r_b && game->turn == BLACK)
+            ) &&
+            game->king_can_go_right
+        ) {
+            add_legal_move(game, (Move){
+                (P){4, y}, (P){6, y}, "O-O"
+            });
+        }
+        if (
+            xy(game, 3, y).type == EMPTY &&
+            xy(game, 2, y).type == EMPTY &&
+            xy(game, 0, y).type == ROOK &&
+            xy(game, 0, y).color == game->turn && (
+                (!game->moved_rook_l_w && game->turn == WHITE) ||
+                (!game->moved_rook_l_b && game->turn == BLACK)
+            ) &&
+            game->king_can_go_left
+        ) {
+            add_legal_move(game, (Move){
+                (P){4, y}, (P){2, y}, "O-O-O"
+            });
+        }
     }
 }
 
