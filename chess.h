@@ -100,6 +100,9 @@ typedef struct {
     bool moved_rook_r_b: 1;
     bool moved_rook_l_b: 1;
 
+    bool king_can_go_left: 1;
+    bool king_can_go_right: 1;
+
     U8 en_passant_line_plus1: 4;
     
     bool check: 1;

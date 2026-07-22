@@ -50,6 +50,11 @@ void raw_move_minimal(Game *game, Move move) {
         xy(game, move.end.x, move.end.y).type == EMPTY
     );
 
+    bool small_castling = (
+        xy(game, move.start.x, move.start.y).type == KING &&
+        move.end.x - move.start.x == 2
+    );
+
     game->en_passant_line_plus1 = (
         (
             abs(move.start.y - move.end.y) >= 2 &&
@@ -63,6 +68,11 @@ void raw_move_minimal(Game *game, Move move) {
     set_xy(game, move.start.x, move.start.y, (Piece){.type = EMPTY});
     if (en_passant) {
         set_xy(game, move.end.x, move.start.y, (Piece){.type = EMPTY});
+    }
+    if (small_castling) {
+        const U8 y = game->turn == WHITE ? 0 : 7;
+        set_xy(game, 5, y, xy(game, 7, y));
+        set_xy(game, 7, y, (Piece){.type = EMPTY});
     }
 }
 
@@ -279,6 +289,19 @@ void add_legal_move(Game *game, Move move) {
         close_game(&test_game);
 
         if (!self_check) {
+            if (
+                xy(game, move.start.x, move.start.y).type == KING &&
+                move.start.y == move.end.y
+            ) {
+                switch (move.start.x - move.end.x) {
+                    case -1:
+                        game->king_can_go_right = true;
+                        break;
+                    case 1:
+                        game->king_can_go_left = true;
+                        break;
+                }
+            }
             game->amount_of_legal_moves++;
             U8 capacity = 1;
             for (U8 i = 0; i < game->legal_moves_capacity; i++) capacity *= 2;
@@ -335,6 +358,9 @@ void calculate_legal_moves(Game *game) {
         game->legal_moves_capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
     );
     if (game->legal_moves == NULL) out_of_memory_err();
+
+    game->king_can_go_right = false;
+    game->king_can_go_left = false;
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -457,15 +483,22 @@ void calculate_legal_moves(Game *game) {
         xy(game, 5, y).type == EMPTY &&
         xy(game, 6, y).type == EMPTY &&
         xy(game, 7, y).type == ROOK &&
-        xy(game, 7, y).color != game->turn
+        xy(game, 7, y).color == game->turn && (
+            (!game->moved_king_w && game->turn == WHITE) ||
+            (!game->moved_king_b && game->turn == BLACK)
+        ) && (
+            (!game->moved_rook_r_w && game->turn == WHITE) ||
+            (!game->moved_rook_r_b && game->turn == BLACK)
+        ) && !game->check &&
+        game->king_can_go_right
     ) {
-        
+        add_legal_move(game, (Move){
+            (P){4, y}, (P){6, y}, "O-O"
+        });
     }
 }
 
 void raw_move(Game *game, Move move) {
-    raw_move_minimal(game, move);
-
     if (
         !(
             game->turn == WHITE ?
@@ -489,7 +522,7 @@ void raw_move(Game *game, Move move) {
         if (game->turn == WHITE) {
             game->moved_rook_l_w = true;
         } else {
-            game->moved_rook_l_w = true;
+            game->moved_rook_l_b = true;
         }
     } else if (
         !(
@@ -502,16 +535,18 @@ void raw_move(Game *game, Move move) {
         if (game->turn == WHITE) {
             game->moved_rook_r_w = true;
         } else {
-            game->moved_rook_r_w = true;
+            game->moved_rook_r_b = true;
         }
     }
 
+    raw_move_minimal(game, move);
+    
     for (U8 i = 0; i < MAX_MOVE_NOTATION_LEN; i++) {
         game->moves[game->amount_of_moves - 1][i] = move.notation[i];
     }
-
+    
     game->turn = game->turn == WHITE ? BLACK : WHITE;
-
+    
     calculate_legal_moves(game);
     is_check(game);
     is_draw(game);
