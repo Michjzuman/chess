@@ -38,7 +38,7 @@ int main(void) {
     printf("sizeof P:     %lu\n", sizeof(P));
     printf("sizeof Piece: %lu\n", sizeof(Piece));
 
-    U8 winner = play(tui, human, human);
+    U8 winner = play(tui, human, jonkler);
     printf("%s\n",
         winner == 0 ? "draw" :
         winner == 1 ? "green" : "blue"

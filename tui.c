@@ -8,6 +8,8 @@
 
 static const char abc[] = ABC;
 
+static const char piece_letters[] = PIECE_LETTERS;
+
 static const char symbols[] = " PNBRQK";
 
 static U8 max_notation_len = 0;
@@ -50,7 +52,8 @@ static struct termios original_terminal;
 static void draw_game_full(
     const Game *game,
     P cursor, bool show_cursor,
-    P *marks, U8 amount_of_marks, P main_mark, bool show_marks
+    P *marks, U8 amount_of_marks, P main_mark, bool show_marks,
+    U8 promotion_cursor, bool show_promotion_menu
 ) {
     printf("\n\033[90m┌");
     for (U8 x = 0; x < SIZE - 1; x++) printf("───┬");
@@ -120,6 +123,24 @@ static void draw_game_full(
         }
     }
     printf("\033[0m\n\n");
+    if (show_promotion_menu) {
+        char *color = game->turn == WHITE ? "\033[32m" : "\033[34m";
+        printf(" %s", color);
+        for (U8 i = 2; i < 6; i++) {
+            bool is_cursor = (
+                promotion_cursor + 2 == i
+            );
+            printf("%s%s%c%s%s",
+                is_cursor ? "\033[0m[" : " ",
+                is_cursor ? color : "",
+                symbols[i],
+                is_cursor ? "\033[0m]" : " ",
+                is_cursor ? color : ""
+            );
+        }
+    } else {
+        printf("             \033[1F\n");
+    }
 }
 
 
@@ -153,7 +174,7 @@ U8 draw_game_small(const Game *game) {
 }
 
 U8 draw_game(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false);
+    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false);
     return SIZE * 2 + 4;
 }
 
@@ -162,17 +183,22 @@ U8 tui(const Game *game) {
 }
 
 U8 draw_game_testing(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false);
+    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false);
     return 0;
 }
 
 U8 draw_game_with_cursor(const Game *game, P cursor) {
-    draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false);
+    draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false, 0, false);
     return SIZE * 2 + 4;
 }
 
 U8 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks) {
-    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true);
+    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, 0, false);
+    return SIZE * 2 + 4;
+}
+
+U8 draw_game_with_cursor_and_marks_and_promotion_menu(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks, U8 promotion_cursor) {
+    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, promotion_cursor, true);
     return SIZE * 2 + 4;
 }
 
@@ -180,6 +206,8 @@ U8 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_
 U8 human(const Game *game) {
     P cursor = start_cursor[game->turn];
     bool selected = false;
+    bool promotion_menu = false;
+    U8 promotion_cursor = 3;
     const U8 height = draw_game_with_cursor(game, cursor);
     P *marks;
     P main_mark;
@@ -189,9 +217,15 @@ U8 human(const Game *game) {
     while (true) {
         if (height > 0) printf("\033[%dF", height);
         if (selected) {
-            draw_game_with_cursor_and_marks(
-                game, cursor, marks, main_mark, amount_of_marks
-            );
+            if (promotion_menu) {
+                draw_game_with_cursor_and_marks_and_promotion_menu(
+                    game, cursor, marks, main_mark, amount_of_marks, promotion_cursor
+                );
+            } else {
+                draw_game_with_cursor_and_marks(
+                    game, cursor, marks, main_mark, amount_of_marks
+                );
+            }
         } else {
             draw_game_with_cursor(game, cursor);
         }
@@ -199,19 +233,44 @@ U8 human(const Game *game) {
         if (key == '\r' || key == '\n' || key == ' ') {
             if (selected) {
                 bool legal = false;
+                bool just_set_promotion_menu = false;
                 for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
                     if (
                         game->legal_moves[i].start.x == cursor.x &&
                         game->legal_moves[i].start.y == cursor.y &&
                         game->legal_moves[i].end.x == main_mark.x &&
-                        game->legal_moves[i].end.y == main_mark.y
+                        game->legal_moves[i].end.y == main_mark.y && (
+                            (
+                                game->legal_moves[i].notation[strlen(game->legal_moves[i].notation) - 2] == '=' &&
+                                game->legal_moves[i].notation[strlen(game->legal_moves[i].notation) - 1] == piece_letters[promotion_cursor + 2]
+                            ) || !promotion_menu
+                        )
                     ) {
                         move = i;
                         legal = true;
+                        if (
+                            ((game->turn == WHITE && game->legal_moves[i].end.y == SIZE - 1) ||
+                            (game->turn == BLACK && game->legal_moves[i].end.y == 0)) &&
+                            xy(game, game->legal_moves[i].start.x, game->legal_moves[i].start.y).type == PAWN
+                        ) {
+                            if (!promotion_menu) {
+                                just_set_promotion_menu = true;
+                            }
+                            promotion_menu = true;
+                        }
                         break;
                     }
                 }
-                if (legal) {
+                if (!just_set_promotion_menu && legal) {
+                    if (promotion_menu) {
+                        while (
+                            game->legal_moves[move].notation[
+                                strlen(game->legal_moves[move].notation) - 1
+                            ] != piece_letters[promotion_cursor + 2]
+                        ) {
+                            move++;
+                        }
+                    }
                     if (height > 0) printf("\033[%dF", height);
                     start_cursor[game->turn] = main_mark;
                     return move;
@@ -246,27 +305,39 @@ U8 human(const Game *game) {
             if (selected && second == 27) {
                 free(marks);
                 selected = false;
+                promotion_menu = 0;
             }
             if (second == '[') {
                 int third = getchar();
                 if (selected) {
-                    if (
-                        third == 'A' || third == 'B' ||
-                        third == 'C' || third == 'D'
-                    ) {
+                    if (promotion_menu) {
                         switch (third) {
-                            case 'A':
-                                if (main_mark.y < SIZE - 1) main_mark.y++;
-                                break;
-                            case 'B':
-                                if (main_mark.y > 0) main_mark.y--;
-                                break;
                             case 'C':
-                                if (main_mark.x < SIZE - 1) main_mark.x++;
+                                if (promotion_cursor < 3) promotion_cursor++;
                                 break;
                             case 'D':
-                                if (main_mark.x > 0) main_mark.x--;
+                                if (promotion_cursor > 0) promotion_cursor--;
                                 break;
+                        }
+                    } else {
+                        if (
+                            third == 'A' || third == 'B' ||
+                            third == 'C' || third == 'D'
+                        ) {
+                            switch (third) {
+                                case 'A':
+                                    if (main_mark.y < SIZE - 1) main_mark.y++;
+                                    break;
+                                case 'B':
+                                    if (main_mark.y > 0) main_mark.y--;
+                                    break;
+                                case 'C':
+                                    if (main_mark.x < SIZE - 1) main_mark.x++;
+                                    break;
+                                case 'D':
+                                    if (main_mark.x > 0) main_mark.x--;
+                                    break;
+                            }
                         }
                     }
                 } else {

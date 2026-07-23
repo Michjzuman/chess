@@ -23,7 +23,7 @@
 #define PROMOTION_PIECES { \
     2, 3, 4, 5 \
 }
-#define MAX_MOVE_NOTATION_LEN 8
+#define MAX_MOVE_NOTATION_LEN 9
 
 ///////////////////////////
 

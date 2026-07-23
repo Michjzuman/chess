@@ -19,6 +19,10 @@ U8 draw_game_with_cursor_and_marks(
     const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks
 );
 
+U8 draw_game_with_cursor_and_marks_and_promotion_menu(
+    const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks, U8 promotion_cursor
+);
+
 // can be removed later
 U8 draw_game_testing(const Game *game);
 

@@ -54,6 +54,18 @@ void raw_move_minimal(Game *game, Move move) {
     bool short_castling = is_king && move.end.x - move.start.x == 2;
     bool long_castling = is_king && move.end.x - move.start.x == -2;
 
+    U8 notation_len = strlen(move.notation);
+    bool promotion = (
+        move.notation[notation_len - 2] == '='
+    );
+    PieceType promoted_piece_type;
+    switch (move.notation[notation_len - 1]) {
+        case piece_letters[2]: promoted_piece_type = KNIGHT; break;
+        case piece_letters[3]: promoted_piece_type = BISHOP; break;
+        case piece_letters[4]: promoted_piece_type = ROOK; break;
+        case piece_letters[5]: promoted_piece_type = QUEEN; break;
+    }
+
     game->en_passant_line_plus1 = (
         (
             abs(move.start.y - move.end.y) >= 2 &&
@@ -75,6 +87,12 @@ void raw_move_minimal(Game *game, Move move) {
         const U8 y = game->turn == WHITE ? 0 : 7;
         set_xy(game, 3, y, xy(game, 7, y));
         set_xy(game, 0, y, (Piece){.type = EMPTY});
+    }
+    if (promotion) {
+        set_xy(game, move.end.x, move.end.y, (Piece){
+            .color = xy(game, move.end.x, move.end.y).color,
+            .type = promoted_piece_type
+        });
     }
 }
 
@@ -124,7 +142,7 @@ void is_check(Game *game) {
                 };
 
                 for (U8 d = 0; d < sizeof(directions) / sizeof(P); d++) {
-                    for (I8 i = 1; i < SIZE - 1; i++) {
+                    for (I8 i = 1; i < SIZE; i++) {
                         I8 ax = directions[d].x * i;
                         I8 ay = directions[d].y * i;
                         if (
@@ -314,36 +332,42 @@ void add_legal_move(Game *game, Move move) {
                 );
             }
     
-            char letter_char = piece_letters[xy(game, move.start.x, move.start.y).type];
-            char *letter = malloc(letter_char == ' ' ? 0 : 1);
-            if (letter == NULL) out_of_memory_err();
-            
-            if (letter_char != ' ') letter[0] = letter_char;
-
-            bool takes = xy(game, move.end.x, move.end.y).type != EMPTY;
-
-            bool show_start_x = (
-                (xy(game, move.start.x, move.start.y).type == PAWN && takes)
-                // duplicate notations
-            );
-            char *start_x = malloc(show_start_x ? 1 : 0);
-            if (start_x == NULL) out_of_memory_err();
-            if (show_start_x) start_x[0] = abc[move.start.x];
-
-            snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s",
-                letter,                     // piece type
-                start_x,                    // start x
-                "",                         // start y
-                takes ? "x" : "",           // takes
-                abc[move.end.x],            // end x
-                move.end.y + 1,             // end y
-                "",                         // pawn promotion
-                //test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
-                test_game.check ? "+" : ""  // check
-            );
-            free(letter);
-            free(start_x);
+            if (move.notation[0] != 'O') {
+                bool is_promotion = move.notation[0] == '=';
+                char *promotion = malloc(is_promotion ? 2 : 0);
+                if (is_promotion) strcpy(promotion, move.notation);
+                char letter_char = piece_letters[xy(game, move.start.x, move.start.y).type];
+                char *letter = malloc(letter_char == ' ' ? 0 : 1);
+                if (letter == NULL) out_of_memory_err();
+                
+                if (letter_char != ' ') letter[0] = letter_char;
     
+                bool takes = xy(game, move.end.x, move.end.y).type != EMPTY;
+    
+                bool show_start_x = (
+                    (xy(game, move.start.x, move.start.y).type == PAWN && takes)
+                    // duplicate notations
+                );
+                char *start_x = malloc(show_start_x ? 1 : 0);
+                if (start_x == NULL) out_of_memory_err();
+                if (show_start_x) start_x[0] = abc[move.start.x];
+    
+                snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s%s",
+                    letter,                     // piece type
+                    start_x,                    // start x
+                    "",                         // start y
+                    takes ? "x" : "",           // takes
+                    abc[move.end.x],            // end x
+                    move.end.y + 1,             // end y
+                    "",                         // pawn promotion
+                    //test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
+                    test_game.check ? "+" : "", // check
+                    promotion
+                );
+                free(letter);
+                free(start_x);
+            }
+
             game->legal_moves[game->amount_of_legal_moves - 1] = move;
         }
 
@@ -399,11 +423,15 @@ void calculate_legal_moves(Game *game) {
                     if (xy(game, x, y + ay).type == EMPTY) {
                         if (y == (square.color == WHITE ? 6 : 1)) {
                             // Promotion
-
-                            add_legal_move(game, (Move){
-                                (P){x, y}, (P){x, y + ay}
-                            });
-
+                            char notation[] = "= ";
+                            for (U8 i = 2; i < 6; i++) {
+                                notation[1] = piece_letters[i];
+                                Move move = {
+                                    (P){x, y}, (P){x, y + ay}
+                                };
+                                strcpy(move.notation, notation);
+                                add_legal_move(game, move);
+                            }
                         } else {
                             add_legal_move(game, (Move){
                                 (P){x, y}, (P){x, y + ay}
@@ -436,9 +464,22 @@ void calculate_legal_moves(Game *game) {
                             xy(game, x + ax, y + ay).type != EMPTY &&
                             xy(game, x + ax, y + ay).color != square.color
                         ) {
-                            add_legal_move(game, (Move){
-                                (P){x, y}, (P){x + ax, y + ay}
-                            });
+                            if (y == (square.color == WHITE ? 6 : 1)) {
+                                // Promotion
+                                char notation[] = "= ";
+                                for (U8 i = 2; i < 6; i++) {
+                                    notation[1] = piece_letters[i];
+                                    Move move = {
+                                        (P){x, y}, (P){x + ax, y + ay}
+                                    };
+                                    strcpy(move.notation, notation);
+                                    add_legal_move(game, move);
+                                }
+                            } else {
+                                add_legal_move(game, (Move){
+                                    (P){x, y}, (P){x + ax, y + ay}
+                                });
+                            }
                         }
                     }
                 } else if (
@@ -461,7 +502,7 @@ void calculate_legal_moves(Game *game) {
                         d < amount_of_directions + direction_start_index;
                         d++
                     ) {
-                        for (U8 i = 1; i < SIZE - 1; i++) {
+                        for (U8 i = 1; i < SIZE; i++) {
                             I8 ax = directions[d][0] * i;
                             I8 ay = directions[d][1] * i;
                             add_legal_move(game, (Move){
@@ -503,6 +544,7 @@ void calculate_legal_moves(Game *game) {
         if (
             xy(game, 3, y).type == EMPTY &&
             xy(game, 2, y).type == EMPTY &&
+            xy(game, 1, y).type == EMPTY &&
             xy(game, 0, y).type == ROOK &&
             xy(game, 0, y).color == game->turn && (
                 (!game->moved_rook_l_w && game->turn == WHITE) ||
