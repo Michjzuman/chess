@@ -266,9 +266,18 @@ U8 human(const Game *game) {
                         while (
                             game->legal_moves[move].notation[
                                 strlen(game->legal_moves[move].notation) - 1
-                            ] != piece_letters[promotion_cursor + 2]
+                            ] != piece_letters[promotion_cursor + 2] && !(
+                                (game->legal_moves[move].notation[
+                                    strlen(game->legal_moves[move].notation) - 1
+                                ] == '+' || game->legal_moves[move].notation[
+                                    strlen(game->legal_moves[move].notation) - 1
+                                ] == '#') && game->legal_moves[move].notation[
+                                    strlen(game->legal_moves[move].notation) - 2
+                                ] != piece_letters[promotion_cursor + 2]
+                            )
                         ) {
                             move++;
+                            if (move > game->amount_of_legal_moves) move = 0;
                         }
                     }
                     if (height > 0) printf("\033[%dF", height);

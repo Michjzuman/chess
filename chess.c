@@ -302,7 +302,7 @@ void add_legal_move(Game *game, Move move) {
         test_game.turn = test_game.turn == WHITE ? BLACK : WHITE;
         is_check(&test_game);
         if (test_game.check) {
-            calculate_legal_moves(&test_game);
+            //calculate_legal_moves(&test_game);
         }
         close_game(&test_game);
 
@@ -351,15 +351,15 @@ void add_legal_move(Game *game, Move move) {
                 if (show_start_x) start_x[0] = abc[move.start.x];
     
                 snprintf(move.notation, sizeof(move.notation), "%s%s%s%c%d%s%s",
-                    letter,                     // piece type
-                    start_x,                    // start x
-                    takes ? "x" : "",           // takes
-                    abc[move.end.x],            // end x
-                    move.end.y + 1,             // end y
+                    letter,           // piece type
+                    start_x,          // start x
+                    takes ? "x" : "", // takes
+                    abc[move.end.x],  // end x
+                    move.end.y + 1,   // end y
+                    promotion,        // promotion
                     test_game.check ? (
                         test_game.amount_of_legal_moves == 0 ? "#" : "+"
-                    ) : "", // check
-                    promotion
+                    ) : ""            // check
                 );
                 free(letter);
                 free(start_x);
@@ -714,8 +714,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
     const U8 height = visualize(&game);
 
     while (true) {
-        //usleep(1000);
-
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
         if (height > 0) printf("\033[%dF", height);
@@ -731,13 +729,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
         };
         
         visualize(&game);
-
-        /*
-        for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
-            printf("%s ", game.legal_moves[i].notation);
-        }
-        printf("\n");
-        */
 
         if (game.amount_of_legal_moves <= 0 && game.check) {
             close_game(&game);
