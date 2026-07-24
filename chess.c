@@ -301,11 +301,9 @@ void add_legal_move(Game *game, Move move) {
         bool self_check = test_game.check;
         test_game.turn = test_game.turn == WHITE ? BLACK : WHITE;
         is_check(&test_game);
-        /*
         if (test_game.check) {
             calculate_legal_moves(&test_game);
         }
-        */
         close_game(&test_game);
 
         if (!self_check) {
@@ -358,8 +356,9 @@ void add_legal_move(Game *game, Move move) {
                     takes ? "x" : "",           // takes
                     abc[move.end.x],            // end x
                     move.end.y + 1,             // end y
-                    //test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
-                    test_game.check ? "+" : "", // check
+                    test_game.check ? (
+                        test_game.amount_of_legal_moves == 0 ? "#" : "+"
+                    ) : "", // check
                     promotion
                 );
                 free(letter);
