@@ -352,20 +352,52 @@ void add_legal_move(Game *game, Move move) {
                 if (start_x == NULL) out_of_memory_err();
                 if (show_start_x) start_x[0] = abc[move.start.x];
     
-                snprintf(move.notation, sizeof(move.notation), "%s%s%s%s%c%d%s%s%s",
+                snprintf(move.notation, sizeof(move.notation), "%s%s%s%c%d%s%s",
                     letter,                     // piece type
                     start_x,                    // start x
-                    "",                         // start y
                     takes ? "x" : "",           // takes
                     abc[move.end.x],            // end x
                     move.end.y + 1,             // end y
-                    "",                         // pawn promotion
                     //test_game.check && test_game.amount_of_legal_moves <= 0 ? "#" : // checkmate
                     test_game.check ? "+" : "", // check
                     promotion
                 );
                 free(letter);
                 free(start_x);
+
+                if (
+                    xy(game, move.start.x, move.start.y).type == KNIGHT ||
+                    xy(game, move.start.x, move.start.y).type == BISHOP ||
+                    xy(game, move.start.x, move.start.y).type == ROOK ||
+                    xy(game, move.start.x, move.start.y).type == QUEEN
+                ) {
+                    for (U8 i = 0; i < game->amount_of_legal_moves - 1; i++) {
+                        if (strcmp(game->legal_moves[i].notation, move.notation) == 0) {
+                            if (game->legal_moves[i].start.x != move.start.x) {
+                                memmove(&move.notation[2], &move.notation[1], strlen(&move.notation[1]) + 1);
+                                move.notation[1] = abc[move.start.x];
+
+                                memmove(
+                                    &game->legal_moves[i].notation[2],
+                                    &game->legal_moves[i].notation[1],
+                                    strlen(&game->legal_moves[i].notation[1]) + 1
+                                );
+                                game->legal_moves[i].notation[1] = abc[game->legal_moves[i].start.x];
+                            } else if (game->legal_moves[i].start.y != move.start.y) {
+                                memmove(&move.notation[2], &move.notation[1], strlen(&move.notation[1]) + 1);
+                                move.notation[1] = (move.start.y + 1) + '0';
+
+                                memmove(
+                                    &game->legal_moves[i].notation[2],
+                                    &game->legal_moves[i].notation[1],
+                                    strlen(&game->legal_moves[i].notation[1]) + 1
+                                );
+                                game->legal_moves[i].notation[1] = (game->legal_moves[i].start.y + 1) + '0';
+                            }
+                            break;
+                        }
+                    }
+                }
             }
 
             game->legal_moves[game->amount_of_legal_moves - 1] = move;
@@ -726,8 +758,6 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
 *   50-move rule
 *   insufficient material
 * 
-* Promotion
-* Castling
 * Resignation & Remis
 * 
 \* --- ---- ---- --- */
