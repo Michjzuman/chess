@@ -105,6 +105,8 @@ typedef struct {
     bool king_can_go_left: 1;
     bool king_can_go_right: 1;
 
+    U8 moves_without_pawn_moves_or_takes: 6;
+
     U8 en_passant_line_plus1: 4;
     
     bool check: 1;

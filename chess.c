@@ -55,15 +55,29 @@ U0 raw_move_minimal(Game *game, Move move) {
 
     U8 notation_len = strlen(move.notation);
     bool promotion = (
-        move.notation[notation_len - 2] == '='
+        move.notation[notation_len - 2] == '=' || (
+            move.notation[notation_len - 3] == '=' && (
+                move.notation[notation_len - 1] == '+' ||
+                move.notation[notation_len - 1] == '#'
+            )
+        )
     );
     PieceType promoted_piece_type;
-    switch (move.notation[notation_len - 1]) {
+    switch (
+        move.notation[notation_len - 2] == '=' ?
+        move.notation[notation_len - 1] :
+        move.notation[notation_len - 2]
+    ) {
         case piece_letters[2]: promoted_piece_type = KNIGHT; break;
         case piece_letters[3]: promoted_piece_type = BISHOP; break;
         case piece_letters[4]: promoted_piece_type = ROOK; break;
         case piece_letters[5]: promoted_piece_type = QUEEN; break;
     }
+
+    bool move_without_pawn_move_or_take = (
+        xy(game, move.start.x, move.start.y).type != PAWN &&
+        xy(game, move.end.x, move.end.y).type == EMPTY
+    );
 
     game->en_passant_line_plus1 = (
         (
@@ -92,6 +106,11 @@ U0 raw_move_minimal(Game *game, Move move) {
             .color = xy(game, move.end.x, move.end.y).color,
             .type = promoted_piece_type
         });
+    }
+    if (move_without_pawn_move_or_take) {
+        game->moves_without_pawn_moves_or_takes++;
+    } else {
+        game->moves_without_pawn_moves_or_takes = 0;
     }
 }
 
@@ -201,6 +220,11 @@ U0 is_draw(Game *game) {
         return;
     }
 
+    if (game->moves_without_pawn_moves_or_takes >= 50) {
+        game->draw = true;
+        return;
+    }
+
     // repetition detection
 
     Game test_game = new_game();
@@ -220,7 +244,10 @@ U0 is_draw(Game *game) {
             }
         }
         if (!works) {
-            fprintf(stderr, "what!?!?!?\n");
+            fprintf(stderr, "what!?!?!? %d: %s\n legal_moves:", i1, game->moves[i1]);
+            for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+                fprintf(stderr, " %s", game->legal_moves[i].notation);
+            }
             exit(1);
         }
         test_game.turn = test_game.turn == WHITE ? BLACK : WHITE;
@@ -357,7 +384,7 @@ U0 add_legal_move(Game *game, Move move) {
                     move.end.y + 1,   // end y
                     promotion,        // promotion
                     test_game.check ? (
-                        test_game.amount_of_legal_moves == 0 ? "#" : "+"
+                        /*test_game.amount_of_legal_moves == 0 ? "#" : */"+"
                     ) : ""            // check
                 );
                 free(letter);
@@ -669,6 +696,7 @@ Game new_game() {
     game.draw = false;
     game.turn = WHITE;
     game.en_passant_line_plus1 = 0;
+    game.moves_without_pawn_moves_or_takes = 0;
 
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
@@ -728,6 +756,13 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
         if (height > 0) printf("\033[%dF", height);
         visualize(&game);
 
+        /*
+        printf("\n[");
+        for (U8 i = 0; i < game.amount_of_legal_moves; i++) {
+            printf(" %s", game.legal_moves[i].notation);
+        } printf("]\n\n");
+        */
+
         if (game.amount_of_legal_moves <= 0 && game.check) {
             close_game(&game);
             return game.turn == WHITE ? 2 : 1;
@@ -747,9 +782,9 @@ U8 bg(const Game *game) {
 /* --- TODO LIST --- *\
 * 
 * Draw:
-*   50-move rule
 *   insufficient material
 * 
+* Move notation "#" for checkmate
 * Resignation & Remis
 * 
 \* --- ---- ---- --- */

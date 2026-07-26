@@ -10,8 +10,17 @@ typedef struct {
 } NN;
 
 
-NN new_nn() {
-    NN nn;
+NN new_nn(
+    U32 amount_of_inputs,
+    U32 amount_of_outputs,
+    U32 amount_of_hidden_layers,
+    U32 *hidden_layers
+) {
+    NN nn = {
+        .amount_of_inputs = amount_of_inputs,
+        .amount_of_outputs = amount_of_outputs,
+        .amount_of_hidden_layers = amount_of_hidden_layers
+    };
 
     
 

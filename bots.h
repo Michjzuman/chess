@@ -6,6 +6,7 @@
 ///////////////////////////
 
 U8 jonkler(const Game *);
+U8 jonkler_with_delay(const Game *);
 
 U8 thief(const Game *game);
 
