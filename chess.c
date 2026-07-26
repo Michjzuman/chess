@@ -5,15 +5,14 @@
 ////////////////[ Author: Michjzuman ]///
 /////////////////////////////////////////
 
-static const U8 piece_values[] = PIECE_VALUES;
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
-void calculate_legal_moves(Game *game);
+U0 calculate_legal_moves(Game *game);
 
-void raw_move(Game *game, Move move);
+U0 raw_move(Game *game, Move move);
 
-void out_of_memory_err() {
+U0 out_of_memory_err() {
     fprintf(stderr, "Ou shiii 👀. Out of Memory");
     exit(1);
 }
@@ -24,7 +23,7 @@ Piece xy(const Game *game, U8 x, U8 y) {
     return (PieceObject){.U8 = piece_U8}.Piece;
 }
 
-void set_xy(Game *game, U8 x, U8 y, Piece new) {
+U0 set_xy(Game *game, U8 x, U8 y, Piece new) {
     TwoPieces *loc = &game->board[y][x/2];
     if (x % 2 == 0) {
         loc->left = (PieceObject){.Piece = new}.U8;
@@ -33,7 +32,7 @@ void set_xy(Game *game, U8 x, U8 y, Piece new) {
     }
 }
 
-void raw_move_minimal(Game *game, Move move) {
+U0 raw_move_minimal(Game *game, Move move) {
     game->amount_of_moves++;
     U16 capacity = 1;
     for (U8 i = 0; i < game->moves_capacity; i++) capacity *= 2;
@@ -96,7 +95,7 @@ void raw_move_minimal(Game *game, Move move) {
     }
 }
 
-void is_check(Game *game) {
+U0 is_check(Game *game) {
     game->check = false;
     bool done = false;
     for (U8 y = 0; y < SIZE; y++) {
@@ -176,7 +175,7 @@ void is_check(Game *game) {
     }
 }
 
-void is_draw(Game *game) {
+U0 is_draw(Game *game) {
     if (
         game->amount_of_legal_moves <= 0 &&
         !game->check
@@ -279,12 +278,12 @@ Game copy_game(const Game *source) {
     return copy;
 }
 
-void close_game(Game *game) {
+U0 close_game(Game *game) {
     free(game->moves);
     free(game->legal_moves);
 }
 
-void add_legal_move(Game *game, Move move) {
+U0 add_legal_move(Game *game, Move move) {
     if (
         move.end.x >= 0 && move.end.x < SIZE &&
         move.end.y >= 0 && move.end.y < SIZE &&
@@ -405,7 +404,7 @@ void add_legal_move(Game *game, Move move) {
     }
 }
 
-void calculate_legal_moves(Game *game) {
+U0 calculate_legal_moves(Game *game) {
     if (game->amount_of_legal_moves > 0) {
         free(game->legal_moves);
     }
@@ -590,7 +589,7 @@ void calculate_legal_moves(Game *game) {
     }
 }
 
-void raw_move(Game *game, Move move) {
+U0 raw_move(Game *game, Move move) {
     if (
         !(
             game->turn == WHITE ?
@@ -716,18 +715,17 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
     while (true) {
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
         
-        if (height > 0) printf("\033[%dF", height);
-
         char *notation = game.legal_moves[player(&game)].notation;
-
+        
         bool legal = do_move(&game, notation);
-
+        
         if (!legal) {
             free(game.moves);
             free(game.legal_moves);
             return 0;
         };
         
+        if (height > 0) printf("\033[%dF", height);
         visualize(&game);
 
         if (game.amount_of_legal_moves <= 0 && game.check) {
@@ -740,6 +738,10 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
         }
     }
 }
+
+U8 bg(const Game *game) {
+    return 0;
+};
 
 
 /* --- TODO LIST --- *\

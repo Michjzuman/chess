@@ -49,7 +49,7 @@ static char *notation_line(const Game *game, U16 line_y) {
 
 static struct termios original_terminal;
 
-static void draw_game_full(
+static U0 draw_game_full(
     const Game *game,
     P cursor, bool show_cursor,
     P *marks, U8 amount_of_marks, P main_mark, bool show_marks,
@@ -144,11 +144,11 @@ static void draw_game_full(
 }
 
 
-void restore_terminal() {
+U0 restore_terminal() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_terminal);
 }
 
-void enable_raw_mode() {
+U0 enable_raw_mode() {
     tcgetattr(STDIN_FILENO, &original_terminal);
     atexit(restore_terminal);
     struct termios raw = original_terminal;

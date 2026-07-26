@@ -27,6 +27,8 @@
 
 ///////////////////////////
 
+typedef void U0;
+
 typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
@@ -115,7 +117,7 @@ typedef struct {
 
 Piece xy(const Game *game, U8 x, U8 y);
 
-void set_xy(Game *game, U8 x, U8 y, Piece new);
+U0 set_xy(Game *game, U8 x, U8 y, Piece new);
 
 ///////////////////////////
 
@@ -131,9 +133,9 @@ Game copy_game(
     const Game *source
 );
 
-void close_game(Game *game);
+U0 close_game(Game *game);
 
-void is_check(Game *game);
+U0 is_check(Game *game);
 
 bool do_move(
     Game *game,
@@ -146,9 +148,11 @@ U8 play(
     U8(*p2)(const Game *)
 );
 
+U8 bg(const Game *game);
+
 ///////////////////////////
 
-void out_of_memory_err();
+U0 out_of_memory_err();
 
 #endif
 

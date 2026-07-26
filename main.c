@@ -2,47 +2,32 @@
 #include "tui.h"
 #include "bots.h"
 
-U8 testing_bot(const Game *game) {
-    char *moves[] = {
-        "e4", "e5",
-        "Nf3", "d5",
-        "d4", "Nc6",
-        "Bb5"
-    };
+struct {char *name; U8(*function)(const Game *);} bots[] = {
+    {"jonkler", jonkler},
+    {"thief", thief},
+    {"murderer", murderer},
 
-    if (
-        game->amount_of_moves <
-        sizeof(moves) / sizeof(char *)
-    ) {
-        for (
-            U8 i = 0;
-            i < game->amount_of_legal_moves;
-            i++
-        ) {
-            if (
-                strcmp(game->legal_moves[i].notation,
-                moves[game->amount_of_moves]) == 0
-            ) {
-                return i;
-            } 
-        }
+    {"gemma4:e2b", gemma4_e2b_mlx},
+    {"gemma4:12b", gemma4_12b_mlx},
+
+    {"gpt-5.4", gpt_5_4_mini},
+    {"gpt-5.5", gpt_5_5}
+};
+
+int main() {
+    U8 count[3] = {0};
+    while (true) {
+        U8 winner = play(tui, gemma4_e2b_mlx, gpt_5_4_mini);
+        count[winner]++;
+        printf(
+            "+-----------\n"
+            "| draw:  %d\n"
+            "| green: %d\n"
+            "| blue:  %d\n"
+            "+-----------\n",
+            count[0], count[1], count[2]
+        );
     }
-
-    exit(0);
-    return jonkler(game);
-}
-
-int main(void) {
-    printf("sizeof Game:  %lu\n", sizeof(Game));
-    printf("sizeof Move:  %lu\n", sizeof(Move));
-    printf("sizeof P:     %lu\n", sizeof(P));
-    printf("sizeof Piece: %lu\n", sizeof(Piece));
-
-    U8 winner = play(tui, human, jonkler);
-    printf("%s\n",
-        winner == 0 ? "draw" :
-        winner == 1 ? "green" : "blue"
-    );
     return 0;
 }
 
