@@ -733,12 +733,12 @@ bool do_move(Game *game, char *notation) {
     return false;
 }
 
-U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
+U8 play(U0(*visualize)(const Game *, bool), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
     srand(time(NULL));
 
     Game game = new_game();
 
-    const U8 height = visualize(&game);
+    visualize(&game, true);
 
     while (true) {
         U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
@@ -753,8 +753,7 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
             return 0;
         };
         
-        if (height > 0) printf("\033[%dF", height);
-        visualize(&game);
+        visualize(&game, false);
 
         /*
         printf("\n[");
@@ -774,9 +773,7 @@ U8 play(U8(*visualize)(const Game *), U8(*p1)(const Game *), U8(*p2)(const Game 
     }
 }
 
-U8 bg(const Game *game) {
-    return 0;
-};
+U0 bg(const Game *game, bool testing) {};
 
 
 /* --- TODO LIST --- *\

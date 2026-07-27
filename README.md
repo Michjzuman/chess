@@ -1,6 +1,6 @@
 ### chess
 
-This is a chess engine written in C for testing and experimenting
+This is a chess engine written in C for fun
 
 ---
 

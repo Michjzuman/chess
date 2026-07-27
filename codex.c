@@ -50,7 +50,7 @@ static U8 codex(const Game *game, char *model) {
             }
         }
     }
-    //fprintf(stderr, "illegal move by codex. prompt: [%s] answer: [%s]\n", command, answer);
+    fprintf(stderr, "illegal move by codex. prompt: [%s] answer: [%s]\n", command, answer);
     return codex(game, model);
 }
 
@@ -67,13 +67,13 @@ U8 gpt_5_5(const Game *game) {
 }
 
 U8 gpt_5_6_Luna(const Game *game) {
-    return codex(game, "gpt-5.5-Luna");
+    return codex(game, "gpt-5.6-luna");
 }
 
 U8 gpt_5_6_Terra(const Game *game) {
-    return codex(game, "gpt-5.5-Terra");
+    return codex(game, "gpt-5.6-terra");
 }
 
 U8 gpt_5_6_Sol(const Game *game) {
-    return codex(game, "gpt-5.5-Sol");
+    return codex(game, "gpt-5.6-sol");
 }

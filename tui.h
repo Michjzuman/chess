@@ -7,11 +7,9 @@
 
 ///////////////////////////
 
-U8 draw_game_small(const Game *);
+U0 tui_small(const Game *, bool testing);
 
-U8 draw_game(const Game *);
-
-U8 tui(const Game *);
+U0 tui(const Game *, bool testing);
 
 U8 draw_game_with_cursor(const Game *, P cursor);
 

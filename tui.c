@@ -49,12 +49,15 @@ static char *notation_line(const Game *game, U16 line_y) {
 
 static struct termios original_terminal;
 
-static U0 draw_game_full(
+static U8 draw_game_full(
     const Game *game,
     P cursor, bool show_cursor,
     P *marks, U8 amount_of_marks, P main_mark, bool show_marks,
-    U8 promotion_cursor, bool show_promotion_menu
+    U8 promotion_cursor, bool show_promotion_menu,
+    bool testing
 ) {
+    const U8 size = testing ? 0 : SIZE * 2 + 4;
+    if (size > 0) printf("\033[%dF", size);
     printf("\n\033[90m┌");
     for (U8 x = 0; x < SIZE - 1; x++) printf("───┬");
     printf("───┐\033[0m\n");
@@ -141,6 +144,7 @@ static U0 draw_game_full(
     } else {
         printf("             \033[1F\n");
     }
+    return size;
 }
 
 
@@ -157,7 +161,7 @@ U0 enable_raw_mode() {
 }
 
 
-U8 draw_game_small(const Game *game) {
+U0 tui_small(const Game *game, bool testing) {
     for (I8 y = SIZE - 1; y >= 0; y--) {
         for (U8 x = 0; x < SIZE; x++) {
             printf(
@@ -170,36 +174,22 @@ U8 draw_game_small(const Game *game) {
         }
         printf("\n");
     }
-    return SIZE;
 }
 
-U8 draw_game(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false);
-    return SIZE * 2 + 4;
-}
-
-U8 tui(const Game *game) {
-    return draw_game(game);
-}
-
-U8 draw_game_testing(const Game *game) {
-    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false);
-    return 0;
+U0 tui(const Game *game, bool testing) {
+    draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false, testing);
 }
 
 U8 draw_game_with_cursor(const Game *game, P cursor) {
-    draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false, 0, false);
-    return SIZE * 2 + 4;
+    return draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false, 0, false, false);
 }
 
 U8 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks) {
-    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, 0, false);
-    return SIZE * 2 + 4;
+    return draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, 0, false, false);
 }
 
 U8 draw_game_with_cursor_and_marks_and_promotion_menu(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks, U8 promotion_cursor) {
-    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, promotion_cursor, true);
-    return SIZE * 2 + 4;
+    return draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, promotion_cursor, true, false);
 }
 
 
@@ -215,7 +205,6 @@ U8 human(const Game *game) {
     U8 move;
     enable_raw_mode();
     while (true) {
-        if (height > 0) printf("\033[%dF", height);
         if (selected) {
             if (promotion_menu) {
                 draw_game_with_cursor_and_marks_and_promotion_menu(
@@ -280,7 +269,6 @@ U8 human(const Game *game) {
                             if (move > game->amount_of_legal_moves) move = 0;
                         }
                     }
-                    if (height > 0) printf("\033[%dF", height);
                     start_cursor[game->turn] = main_mark;
                     return move;
                 }

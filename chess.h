@@ -145,12 +145,12 @@ bool do_move(
 );
 
 U8 play(
-    U8(*visualize)(const Game *),
+    U0(*visualize)(const Game *, bool),
     U8(*p1)(const Game *),
     U8(*p2)(const Game *)
 );
 
-U8 bg(const Game *game);
+U0 bg(const Game *game, bool testing);
 
 ///////////////////////////
 
