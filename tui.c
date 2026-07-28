@@ -144,6 +144,11 @@ static U8 draw_game_full(
     } else {
         printf("             \033[1F\n");
     }
+    /*
+    for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+        printf("[%s]", game->legal_moves[i].notation);
+    }
+    */
     return size;
 }
 
@@ -180,16 +185,16 @@ U0 tui(const Game *game, bool testing) {
     draw_game_full(game, (P){0, 0}, false, NULL, 0, (P){6, 7}, false, 0, false, testing);
 }
 
-U8 draw_game_with_cursor(const Game *game, P cursor) {
-    return draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false, 0, false, false);
+U0 draw_game_with_cursor(const Game *game, P cursor) {
+    draw_game_full(game, cursor, true, NULL, 0, (P){6, 7}, false, 0, false, false);
 }
 
-U8 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks) {
-    return draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, 0, false, false);
+U0 draw_game_with_cursor_and_marks(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks) {
+    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, 0, false, false);
 }
 
-U8 draw_game_with_cursor_and_marks_and_promotion_menu(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks, U8 promotion_cursor) {
-    return draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, promotion_cursor, true, false);
+U0 draw_game_with_cursor_and_marks_and_promotion_menu(const Game *game, P cursor, P *marks, P main_mark, U8 amount_of_marks, U8 promotion_cursor) {
+    draw_game_full(game, cursor, true, marks, amount_of_marks, main_mark, true, promotion_cursor, true, false);
 }
 
 
@@ -198,7 +203,7 @@ U8 human(const Game *game) {
     bool selected = false;
     bool promotion_menu = false;
     U8 promotion_cursor = 3;
-    const U8 height = draw_game_with_cursor(game, cursor);
+    draw_game_with_cursor(game, cursor);
     P *marks;
     P main_mark;
     U8 amount_of_marks;
@@ -224,14 +229,19 @@ U8 human(const Game *game) {
                 bool legal = false;
                 bool just_set_promotion_menu = false;
                 for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+                    char *notation = game->legal_moves[i].notation;
+                    U8 notation_len = strlen(notation);
                     if (
                         game->legal_moves[i].start.x == cursor.x &&
                         game->legal_moves[i].start.y == cursor.y &&
                         game->legal_moves[i].end.x == main_mark.x &&
                         game->legal_moves[i].end.y == main_mark.y && (
                             (
-                                game->legal_moves[i].notation[strlen(game->legal_moves[i].notation) - 2] == '=' &&
-                                game->legal_moves[i].notation[strlen(game->legal_moves[i].notation) - 1] == piece_letters[promotion_cursor + 2]
+                                notation[notation_len - 2] == '=' &&
+                                notation[notation_len - 1] == piece_letters[promotion_cursor + 2]
+                            ) || (
+                                notation[notation_len - 3] == '=' &&
+                                notation[notation_len - 2] == piece_letters[promotion_cursor + 2]
                             ) || !promotion_menu
                         )
                     ) {
@@ -251,24 +261,6 @@ U8 human(const Game *game) {
                     }
                 }
                 if (!just_set_promotion_menu && legal) {
-                    if (promotion_menu) {
-                        while (
-                            game->legal_moves[move].notation[
-                                strlen(game->legal_moves[move].notation) - 1
-                            ] != piece_letters[promotion_cursor + 2] && !(
-                                (game->legal_moves[move].notation[
-                                    strlen(game->legal_moves[move].notation) - 1
-                                ] == '+' || game->legal_moves[move].notation[
-                                    strlen(game->legal_moves[move].notation) - 1
-                                ] == '#') && game->legal_moves[move].notation[
-                                    strlen(game->legal_moves[move].notation) - 2
-                                ] != piece_letters[promotion_cursor + 2]
-                            )
-                        ) {
-                            move++;
-                            if (move > game->amount_of_legal_moves) move = 0;
-                        }
-                    }
                     start_cursor[game->turn] = main_mark;
                     return move;
                 }

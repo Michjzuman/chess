@@ -5,7 +5,7 @@
 int main() {
     U32 count[3] = {0};
     while (true) {
-        U8 winner = play(tui, human, jonkler);
+        U8 winner = play(tui, human, human);
         count[winner]++;
         printf(
             "+-----------\n"

@@ -6,7 +6,7 @@ typedef struct {
     U32 amount_of_outputs;
     U32 amount_of_hidden_layers;
     U32 *hidden_layers;
-    U8 **weights;
+    U8 ***weights;
 } NN;
 
 

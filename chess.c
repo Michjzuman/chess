@@ -366,7 +366,12 @@ U0 add_legal_move(Game *game, Move move) {
                 
                 if (letter_char != ' ') letter[0] = letter_char;
     
-                bool takes = xy(game, move.end.x, move.end.y).type != EMPTY;
+                bool takes = (
+                    xy(game, move.end.x, move.end.y).type != EMPTY || (
+                        xy(game, move.start.x, move.start.y).type == PAWN &&
+                        move.start.x != move.end.x
+                    )
+                );
     
                 bool show_start_x = (
                     (xy(game, move.start.x, move.start.y).type == PAWN && takes)
