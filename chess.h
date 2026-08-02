@@ -6,10 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "types.h"
 
 ///////////////////////////
 
@@ -24,20 +25,6 @@
     2, 3, 4, 5 \
 }
 #define MAX_MOVE_NOTATION_LEN 10
-
-///////////////////////////
-
-typedef void U0;
-
-typedef uint8_t U8;
-typedef uint16_t U16;
-typedef uint32_t U32;
-typedef uint64_t U64;
-
-typedef int8_t I8;
-typedef int16_t I16;
-typedef int32_t I32;
-typedef int64_t I64;
 
 ///////////////////////////
 
@@ -126,6 +113,10 @@ U0 set_xy(Game *game, U8 x, U8 y, Piece new);
 typedef struct {
     U8 *moves;
 } CompactGame;
+
+///////////////////////////
+
+U0 out_of_memory_err();
 
 ///////////////////////////
 

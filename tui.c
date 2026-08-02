@@ -77,7 +77,7 @@ static U8 draw_game_full(
             ) || (
                 show_marks && main_mark.x == x && main_mark.y == y &&
                 marked
-            ));
+            )) && show_cursor;
             bool star = (
                 marked && symbols[xy(game, x, y).type] == ' '
             );
