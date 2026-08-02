@@ -2,11 +2,14 @@
 
 #include "chess.h"
 #include "nn.h"
+#include "tui.h"
 
 static float linear(float x) { return x; }
 static float relu(float x) { return x > 0.0f ? x : 0.0f; }
 static float sigmoid(float x) { return 1.0f / (1.0f + exp(-x)); }
 static float silu(float x) { return x * sigmoid(x); }
+
+static const char piece_letters[] = PIECE_LETTERS;
 
 static const AF activations[] = {
     linear, relu, sigmoid, silu
@@ -32,6 +35,19 @@ U0 close_nn(NN *nn) {
         free(nn->layers[i1].neurons);
     }
     free(nn->layers);
+}
+
+NN copy_nn(const NN *source) {
+    NN copy;
+
+    
+
+    return copy;
+}
+
+NN mutate_nn(const NN *nn) {
+    // TODO
+    return (NN){};
 }
 
 U0 save_nn(const NN *nn, char *path) {
@@ -156,8 +172,8 @@ float *ask_nn(const NN *nn, float *inputs) {
 
 NN new_chess_nn() {
     NN nn = {
-        .amount_of_inputs = 2,
-        .amount_of_layers = 2,
+        .amount_of_inputs = 332,
+        .amount_of_layers = (U32)rand() % 1000 + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
     for (U32 i1 = 0; i1 < nn.amount_of_layers; i1++) {
@@ -165,7 +181,7 @@ NN new_chess_nn() {
             .activation = rand() % 4,
             .amount_of_neurons = (
                 i1 == nn.amount_of_layers - 1 ?
-                130 : 67
+                132 : (U32)rand() % 500 + 132
             )
         };
         nn.layers[i1].neurons = malloc(
@@ -177,11 +193,11 @@ NN new_chess_nn() {
                 nn.layers[i1 - 1].conf.amount_of_neurons
             );
             nn.layers[i1].neurons[i2] = (Neuron){
-                .bias = rand_float(-1.0f, 1.0f),
+                .bias = rand_float(-5.0f, 5.0f),
                 .weights = malloc(prev_layer * sizeof(float))
             };
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
-                nn.layers[i1].neurons[i2].weights[i3] = 2.0f;
+                nn.layers[i1].neurons[i2].weights[i3] = rand_float(-5.0f, 5.0f);
             }
         }
     }
@@ -190,46 +206,142 @@ NN new_chess_nn() {
 
 U8 ask_chess_nn(const Game *game, const NN *nn) {
     float *inputs = malloc(nn->amount_of_inputs * sizeof(float));
-    U32 index = 0;
-    for (U8 piece = 1; piece < 6; piece++) {
-        for (U8 y = 0; y < SIZE; y++) {
-            for (U8 x = 0; x < SIZE; x++) {
-                inputs[index] = (
-                    xy(game, x, y).type == piece ? 1.0f : 0.0f
-                );
-                index++;
+
+    {
+        U32 index = 0;
+        for (U8 piece = 1; piece < 6; piece++) {
+            for (U8 y = 0; y < SIZE; y++) {
+                for (U8 x = 0; x < SIZE; x++) {
+                    inputs[index] = (
+                        xy(game, x, y).type == piece ? 1.0f : 0.0f
+                    );
+                    index++;
+                }
             }
+        }
+        inputs[index] = game->check ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            game->turn == 0 ? game->moved_king_w : game->moved_king_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            game->turn == 0 ? game->moved_rook_r_w : game->moved_king_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            game->turn == 0 ? game->moved_rook_l_w : game->moved_king_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        for (U8 x = 0; x < SIZE; x++) {
+            inputs[index] = (
+                game->en_passant_line_plus1 == x + 1 ? 1.0f : 0.0f
+            );
+            index++;
         }
     }
 
-    return 0;
+    float *answer = ask_nn(nn, inputs);
+    
+    /*
+    for (U32 i = 0; i < amount_of_outputs(nn); i++) {
+        printf("%f ", answer[i]);
+    }
+    printf("\n");
+    */
+
+    U8 result = 0;
+    
+    {
+        float max_value = 0;
+        bool first_value = true;
+        for (U8 y1 = 0; y1 < SIZE; y1++) {
+            for (U8 x1 = 0; x1 < SIZE; x1++) {
+                for (U8 y2 = 0; y2 < SIZE; y2++) {
+                    for (U8 x2 = 0; x2 < SIZE; x2++) {
+                        if (x1 != x2 || y1 != y2) {
+                            for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+                                if (
+                                    game->legal_moves[i].start.x == x1 &&
+                                    game->legal_moves[i].start.y == y1 &&
+                                    game->legal_moves[i].end.x == x2 &&
+                                    game->legal_moves[i].end.y == y2
+                                ) {
+                                    bool promotion = (
+                                        (y2 == 0 || y2 == SIZE - 1) &&
+                                        xy(game, x1, y1).type == PAWN
+                                    );
+                                    U8 promotion_piece = 0;
+                                    bool right_promotion_piece = false;
+                                    if (promotion) {
+                                        float max;
+                                        for (U8 piece = 0; piece < 4; piece++) {
+                                            float value = (
+                                                answer[SIZE * SIZE * 2 + piece]
+                                            );
+                                            if (piece == 0 || value > max) {
+                                                max = value;
+                                                promotion_piece = piece + 2;
+                                                break;
+                                            }
+                                        }
+                                        char *notation = game->legal_moves[i].notation;
+                                        U8 notation_len = strlen(notation);
+                                        if (
+                                            notation[notation_len - 1] ==
+                                            piece_letters[promotion_piece] ||
+                                            (
+                                                (
+                                                    notation[notation_len - 1] == '+' ||
+                                                    notation[notation_len - 1] == '#'
+                                                ) &&
+                                                notation[notation_len - 2] ==
+                                                piece_letters[promotion_piece]
+                                            )
+                                        ) right_promotion_piece = true;
+                                    }
+                                    if (!promotion || right_promotion_piece) {
+                                        float value = (
+                                            answer[y1 * SIZE + x1] +
+                                            answer[y2 * SIZE + x2]
+                                        );
+                                        if (value > max_value || first_value) {
+                                            max_value = value;
+                                            result = i;
+                                            first_value = false;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    free(answer);
+    return result;
+}
+
+U8 neural_network(const Game *game, U0 *nn) {
+    return ask_chess_nn(game, (NN *)nn);
 }
 
 U0 tournament() {
     srand(time(NULL));
 
+    /*
     {
         NN nn = new_chess_nn();
         save_nn(&nn, "brains/test_brain.nn");
         close_nn(&nn);
     }
+    */
 
-    {
-        NN nn = open_nn("brains/test_brain.nn");
-        
-        float *question = malloc(2 * sizeof(float));
-        question[0] = 1.0f;
-        question[1] = 1.0f;
-        float *answer = ask_nn(&nn, question);
-
-        for (U32 i = 0; i < amount_of_outputs(&nn); i++) {
-            printf("%f ", answer[i]);
-        }
-        printf("\n");
-
-        free(answer);
-        close_nn(&nn);
-    }
+    NN nn = open_nn("brains/test_brain.nn");
+    play(tui, human, NULL, neural_network, &nn);
+    close_nn(&nn);
 }
 
 

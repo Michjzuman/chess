@@ -198,7 +198,7 @@ U0 draw_game_with_cursor_and_marks_and_promotion_menu(const Game *game, P cursor
 }
 
 
-U8 human(const Game *game) {
+U8 human(const Game *game, U0 *args) {
     P cursor = start_cursor[game->turn];
     bool selected = false;
     bool promotion_menu = false;

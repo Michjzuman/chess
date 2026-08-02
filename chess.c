@@ -738,7 +738,7 @@ bool do_move(Game *game, char *notation) {
     return false;
 }
 
-U8 play(U0(*visualize)(const Game *, bool), U8(*p1)(const Game *), U8(*p2)(const Game *)) {
+U8 play(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2) {
     srand(time(NULL));
 
     Game game = new_game();
@@ -746,9 +746,10 @@ U8 play(U0(*visualize)(const Game *, bool), U8(*p1)(const Game *), U8(*p2)(const
     visualize(&game, true);
 
     while (true) {
-        U8 (*player)(const Game *game) = game.turn == WHITE ? p1 : p2;
+        PF player = game.turn == WHITE ? p1 : p2;
+        U0 *args = game.turn == WHITE ? args1 : args2;
         
-        char *notation = game.legal_moves[player(&game)].notation;
+        char *notation = game.legal_moves[player(&game, args)].notation;
         
         bool legal = do_move(&game, notation);
         

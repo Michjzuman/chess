@@ -1,6 +1,6 @@
 #include "chess.h"
 
-static U8 ollama(const Game *game, char *model) {
+static U8 ollama(const Game *game, U0 *model) {
     U16 history_len = 0;
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         history_len += strlen(game->moves[i]) + 1;
@@ -36,7 +36,7 @@ static U8 ollama(const Game *game, char *model) {
         "These are all the possible moves: %s\n"
         "Answer with your move only."
         "\" --hidethinking 2>/dev/null",
-        model,
+        (char *)model,
         game->turn == WHITE ? "white" : "black",
         history, legal_moves
     );
@@ -53,12 +53,4 @@ static U8 ollama(const Game *game, char *model) {
     }
     //fprintf(stderr, "illegal move by ollama. prompt: [%s] answer: [%s]\n", command, answer);
     return ollama(game, model);
-}
-
-U8 gemma4_e2b_mlx(const Game *game) {
-    return ollama(game, "gemma4:e2b-mlx");
-}
-
-U8 gemma4_12b_mlx(const Game *game) {
-    return ollama(game, "gemma4:12b-mlx");
 }

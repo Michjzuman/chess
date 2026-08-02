@@ -104,15 +104,21 @@ typedef struct {
     TwoPieces board[SIZE][SIZE / 2];
 } Game;
 
-Piece xy(const Game *game, U8 x, U8 y);
+Piece xy(const Game *, U8 x, U8 y);
 
-U0 set_xy(Game *game, U8 x, U8 y, Piece new);
+U0 set_xy(Game *, U8 x, U8 y, Piece new);
 
 ///////////////////////////
 
 typedef struct {
     U8 *moves;
 } CompactGame;
+
+///////////////////////////
+
+typedef U8(*PF)(const Game *, U0 *);
+
+typedef U0(*VF)(const Game *, bool);
 
 ///////////////////////////
 
@@ -136,9 +142,9 @@ bool do_move(
 );
 
 U8 play(
-    U0(*visualize)(const Game *, bool),
-    U8(*p1)(const Game *),
-    U8(*p2)(const Game *)
+    VF visualize,
+    PF p1, U0 *,
+    PF p2, U0 *
 );
 
 U0 bg(const Game *game, bool testing);

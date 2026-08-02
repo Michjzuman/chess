@@ -1,6 +1,6 @@
 #include "chess.h"
 
-static U8 codex(const Game *game, char *model) {
+U8 codex(const Game *game, U0 *model) {
     U16 history_len = 0;
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         history_len += strlen(game->moves[i]) + 1;
@@ -37,7 +37,7 @@ static U8 codex(const Game *game, char *model) {
         "Answer with your move only."
         "\" --model %s 2>/dev/null",
         game->turn == WHITE ? "white" : "black",
-        history, legal_moves, model
+        history, legal_moves, (char *)model
     );
     free(history); free(legal_moves);
     FILE *pipe = popen(command, "r");
@@ -52,28 +52,4 @@ static U8 codex(const Game *game, char *model) {
     }
     fprintf(stderr, "illegal move by codex. prompt: [%s] answer: [%s]\n", command, answer);
     return codex(game, model);
-}
-
-U8 gpt_5_4_mini(const Game *game) {
-    return codex(game, "gpt-5.4-mini");
-}
-
-U8 gpt_5_4(const Game *game) {
-    return codex(game, "gpt-5.4");
-}
-
-U8 gpt_5_5(const Game *game) {
-    return codex(game, "gpt-5.5");
-}
-
-U8 gpt_5_6_Luna(const Game *game) {
-    return codex(game, "gpt-5.6-luna");
-}
-
-U8 gpt_5_6_Terra(const Game *game) {
-    return codex(game, "gpt-5.6-terra");
-}
-
-U8 gpt_5_6_Sol(const Game *game) {
-    return codex(game, "gpt-5.6-sol");
 }

@@ -23,6 +23,6 @@ U0 draw_game_with_cursor_and_marks_and_promotion_menu(
 
 ///////////////////////////
 
-U8 human(const Game *);
+U8 human(const Game *, U0 *);
 
 #endif

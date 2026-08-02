@@ -26,13 +26,18 @@ typedef struct {
     Layer *layers;
 } NN;
 
-NN new_chess_nn();
-
+U0 close_nn(NN *);
+NN copy_nn(const NN *);
+NN mutate_nn(const NN *);
 U0 save_nn(const NN *, char *path);
 NN open_nn(char *path);
-U0 close_nn(NN *);
 
 float *ask_nn(const NN *, float *);
+
+NN new_chess_nn();
+U8 ask_chess_nn(const Game *, const NN *);
+
+U8 neural_network(const Game *, U0 *nn);
 
 U0 tournament();
 
