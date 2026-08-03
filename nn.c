@@ -2,7 +2,6 @@
 
 #include "chess.h"
 #include "nn.h"
-#include "tui.h"
 
 static float linear(float x) { return x; }
 static float relu(float x) { return x > 0.0f ? x : 0.0f; }
@@ -38,16 +37,67 @@ U0 close_nn(NN *nn) {
 }
 
 NN copy_nn(const NN *source) {
-    NN copy;
-
-    
-
+    NN copy = {
+        .amount_of_inputs = source->amount_of_inputs,
+        .amount_of_layers = source->amount_of_layers,
+        .layers = malloc(
+            source->amount_of_layers * sizeof(Layer)
+        )
+    };
+    for (U32 i1 = 0; i1 < source->amount_of_layers; i1++) {
+        copy.layers[i1].conf = source->layers[i1].conf;
+        U32 prev_layer = (
+            i1 == 0 ? copy.amount_of_inputs :
+            copy.layers[i1 - 1].conf.amount_of_neurons
+        );
+        U32 layer = (
+            copy.layers[i1].conf.amount_of_neurons
+        );
+        copy.layers[i1].neurons = malloc(
+            layer * sizeof(Neuron)
+        );
+        for (U32 i2 = 0; i2 < layer; i2++) {
+            copy.layers[i1].neurons[i2].bias = (
+                source->layers[i1].neurons[i2].bias
+            );
+            copy.layers[i1].neurons[i2].weights = malloc(
+                prev_layer * sizeof(float)
+            );
+            for (U32 i3 = 0; i3 < prev_layer; i3++) {
+                copy.layers[i1].neurons[i2].weights[i3] = (
+                    source->layers[i1].neurons[i2].weights[i3]
+                );
+            }
+        }
+    }
     return copy;
 }
 
-NN mutate_nn(const NN *nn) {
-    // TODO
-    return (NN){};
+NN mutate_nn(const NN *source) {
+    NN mutation = copy_nn(source);
+    for (U8 i = 0; i < (U8)rand() % 100 + 1; i++) {
+        U32 layer = (U32)rand() % mutation.amount_of_layers;
+        U32 amount_of_neurons = (
+            mutation.layers[layer].conf.amount_of_neurons
+        );
+        U32 neuron = (U32)rand() % amount_of_neurons;
+        if ((U8)rand() % 2 == 0) {
+            mutation.layers[layer].neurons[neuron].bias *= (
+                rand_float(-2.0, 2.0)
+            );
+        } else {
+            U32 weight = (
+                (U32)rand() % (
+                    i == 0 ? mutation.amount_of_inputs :
+                    mutation.layers[layer].conf.amount_of_neurons
+                )
+            );
+            mutation.layers[layer].neurons[neuron].weights[weight] *= (
+                rand_float(-2.0, 2.0)
+            );
+        }
+    }
+    return mutation;
 }
 
 U0 save_nn(const NN *nn, char *path) {
@@ -172,7 +222,7 @@ float *ask_nn(const NN *nn, float *inputs) {
 
 NN new_chess_nn() {
     NN nn = {
-        .amount_of_inputs = 332,
+        .amount_of_inputs = 652,
         .amount_of_layers = (U32)rand() % 1000 + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
@@ -181,7 +231,7 @@ NN new_chess_nn() {
             .activation = rand() % 4,
             .amount_of_neurons = (
                 i1 == nn.amount_of_layers - 1 ?
-                132 : (U32)rand() % 500 + 132
+                132 : (U32)rand() % 1000 + 132
             )
         };
         nn.layers[i1].neurons = malloc(
@@ -209,13 +259,20 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
 
     {
         U32 index = 0;
-        for (U8 piece = 1; piece < 6; piece++) {
-            for (U8 y = 0; y < SIZE; y++) {
-                for (U8 x = 0; x < SIZE; x++) {
-                    inputs[index] = (
-                        xy(game, x, y).type == piece ? 1.0f : 0.0f
-                    );
-                    index++;
+        for (U8 color = 0; color < 2; color++) {
+            for (U8 type = 1; type < 6; type++) {
+                for (U8 y = 0; y < SIZE; y++) {
+                    for (U8 x = 0; x < SIZE; x++) {
+                        inputs[index] = (
+                            (
+                                xy(game, x, y).type == type &&
+                                xy(game, x, y).color == (
+                                    game->turn == 0 ? color : 1 - color
+                                )
+                            ) ? 1.0f : 0.0f
+                        );
+                        index++;
+                    }
                 }
             }
         }
@@ -327,22 +384,3 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
 U8 neural_network(const Game *game, U0 *nn) {
     return ask_chess_nn(game, (NN *)nn);
 }
-
-U0 tournament() {
-    srand(time(NULL));
-
-    /*
-    {
-        NN nn = new_chess_nn();
-        save_nn(&nn, "brains/test_brain.nn");
-        close_nn(&nn);
-    }
-    */
-
-    NN nn = open_nn("brains/test_brain.nn");
-    play(tui, human, NULL, neural_network, &nn);
-    close_nn(&nn);
-}
-
-
-

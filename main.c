@@ -19,8 +19,18 @@ int main() {
             count[0], count[1], count[2]
         );
     }
-    */
     
+    tournament();
+    */
+
+    //NN nn = new_chess_nn();
+    //save_nn(&nn, "./brains/test_brain.nn");
+    /*
+    NN nn = open_nn("./brains/test_brain.nn");
+    play(tui, thief, NULL, neural_network, &nn);
+    close_nn(&nn);
+    */
+
     tournament();
 
     return 0;
