@@ -8,7 +8,7 @@ int main() {
     /*
     U32 count[3] = {0};
     while (true) {
-        U8 winner = play(tui, human, human);
+        U8 winner = play(tui, human, NULL, human, NULL);
         count[winner]++;
         printf(
             "+-----------\n"
@@ -19,8 +19,6 @@ int main() {
             count[0], count[1], count[2]
         );
     }
-    
-    tournament();
     */
 
     //NN nn = new_chess_nn();
@@ -30,8 +28,14 @@ int main() {
     play(tui, thief, NULL, neural_network, &nn);
     close_nn(&nn);
     */
-
-    tournament();
+   
+    tournament(10);
+   
+    /*
+    NN nn = open_nn("./brains/i.nn");
+    play(tui, neural_network, &nn, neural_network, &nn);
+    close_nn(&nn);
+    */
 
     return 0;
 }

@@ -12,8 +12,8 @@ U0 calculate_legal_moves(Game *game);
 
 U0 raw_move(Game *game, Move move);
 
-U0 out_of_memory_err() {
-    fprintf(stderr, "Ou shiii 👀. Out of Memory");
+U0 out_of_mem() {
+    fprintf(stderr, "Ou shiii 👀. Out of Memory\n");
     exit(1);
 }
 
@@ -232,7 +232,7 @@ U0 is_draw(Game *game) {
     TwoPieces (*positions)[SIZE][SIZE / 2] = malloc(
         game->amount_of_moves * sizeof(TwoPieces) * SIZE * (SIZE / 2)
     );
-    if (positions == NULL) out_of_memory_err();
+    if (positions == NULL) out_of_mem();
 
     for (U16 i1 = 0; i1 < game->amount_of_moves; i1++) {
         bool works = false;
@@ -289,11 +289,11 @@ Game copy_game(const Game *source) {
     Game copy = *source;
 
     copy.moves = malloc(copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
-    if (copy.moves == NULL) out_of_memory_err();
+    if (copy.moves == NULL) out_of_mem();
     memcpy(copy.moves, source->moves, copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
 
     copy.legal_moves = malloc(copy.amount_of_legal_moves * sizeof(Move));
-    if (copy.legal_moves == NULL) out_of_memory_err();
+    if (copy.legal_moves == NULL) out_of_mem();
     memcpy(copy.legal_moves, source->legal_moves, copy.amount_of_legal_moves * sizeof(Move));
 
     for (U8 y = 0; y < SIZE; y++) {
@@ -362,7 +362,7 @@ U0 add_legal_move(Game *game, Move move) {
                 if (is_promotion) strcpy(promotion, move.notation);
                 char letter_char = piece_letters[xy(game, move.start.x, move.start.y).type];
                 char *letter = malloc(letter_char == ' ' ? 0 : 1);
-                if (letter == NULL) out_of_memory_err();
+                if (letter == NULL) out_of_mem();
                 
                 if (letter_char != ' ') letter[0] = letter_char;
     
@@ -378,7 +378,7 @@ U0 add_legal_move(Game *game, Move move) {
                     // duplicate notations
                 );
                 char *start_x = malloc(show_start_x ? 1 : 0);
-                if (start_x == NULL) out_of_memory_err();
+                if (start_x == NULL) out_of_mem();
                 if (show_start_x) start_x[0] = abc[move.start.x];
     
                 snprintf(move.notation, sizeof(move.notation), "%s%s%s%c%d%s%s",
@@ -445,7 +445,7 @@ U0 calculate_legal_moves(Game *game) {
     game->legal_moves = malloc(
         game->legal_moves_capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
     );
-    if (game->legal_moves == NULL) out_of_memory_err();
+    if (game->legal_moves == NULL) out_of_mem();
 
     game->king_can_go_right = false;
     game->king_can_go_left = false;
@@ -683,13 +683,13 @@ Game new_game() {
     game.moves = malloc(
         game.moves_capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
     );
-    if (game.moves == NULL) out_of_memory_err();
+    if (game.moves == NULL) out_of_mem();
     game.amount_of_legal_moves = 0;
     game.legal_moves_capacity = 1;
     game.legal_moves = malloc(
         game.legal_moves_capacity * 2 * sizeof(Move)
     );
-    if (game.legal_moves == NULL) out_of_memory_err();
+    if (game.legal_moves == NULL) out_of_mem();
     
     game.moved_king_w = false;
     game.moved_rook_r_w = false;

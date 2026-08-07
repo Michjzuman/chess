@@ -29,10 +29,21 @@ U0 close_nn(NN *nn) {
     for (U32 i1 = 0; i1 < nn->amount_of_layers; i1++) {
         U32 layer = nn->layers[i1].conf.amount_of_neurons;
         for (U32 i2 = 0; i2 < layer; i2++) {
+            /*
+            printf("[%d/%d] weight: %p\n", i2 + 1, layer, nn->layers[i1].neurons[i2].weights);
+            if ((uintptr_t)nn->layers[i1].neurons[i2].weights == 1024) {
+                printf("===================\n");
+                sleep(3);
+                0x40742bc44082509
+                0x139656400
+            }
+            */
             free(nn->layers[i1].neurons[i2].weights);
         }
+        //printf("neurons: %p\n", nn->layers[i1].neurons);
         free(nn->layers[i1].neurons);
     }
+    //printf("layers: %p\n", nn->layers);
     free(nn->layers);
 }
 
@@ -222,7 +233,7 @@ float *ask_nn(const NN *nn, float *inputs) {
 
 NN new_chess_nn() {
     NN nn = {
-        .amount_of_inputs = 652,
+        .amount_of_inputs = 664,
         .amount_of_layers = (U32)rand() % 1000 + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
@@ -260,41 +271,40 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
     {
         U32 index = 0;
         for (U8 color = 0; color < 2; color++) {
+            U8 me = game->turn == 0 ? color : 1 - color;
             for (U8 type = 1; type < 6; type++) {
                 for (U8 y = 0; y < SIZE; y++) {
                     for (U8 x = 0; x < SIZE; x++) {
                         inputs[index] = (
                             (
                                 xy(game, x, y).type == type &&
-                                xy(game, x, y).color == (
-                                    game->turn == 0 ? color : 1 - color
-                                )
+                                xy(game, x, y).color == me
                             ) ? 1.0f : 0.0f
                         );
                         index++;
                     }
                 }
             }
-        }
-        inputs[index] = game->check ? 1.0f : 0.0f;
-        index++;
-        inputs[index] = (
-            game->turn == 0 ? game->moved_king_w : game->moved_king_b
-        ) ? 1.0f : 0.0f;
-        index++;
-        inputs[index] = (
-            game->turn == 0 ? game->moved_rook_r_w : game->moved_king_b
-        ) ? 1.0f : 0.0f;
-        index++;
-        inputs[index] = (
-            game->turn == 0 ? game->moved_rook_l_w : game->moved_king_b
-        ) ? 1.0f : 0.0f;
-        index++;
-        for (U8 x = 0; x < SIZE; x++) {
-            inputs[index] = (
-                game->en_passant_line_plus1 == x + 1 ? 1.0f : 0.0f
-            );
+            inputs[index] = game->check ? 1.0f : 0.0f;
             index++;
+            inputs[index] = (
+                me == 0 ? game->moved_king_w : game->moved_king_b
+            ) ? 1.0f : 0.0f;
+            index++;
+            inputs[index] = (
+                me == 0 ? game->moved_rook_r_w : game->moved_king_b
+            ) ? 1.0f : 0.0f;
+            index++;
+            inputs[index] = (
+                me == 0 ? game->moved_rook_l_w : game->moved_king_b
+            ) ? 1.0f : 0.0f;
+            index++;
+            for (U8 x = 0; x < SIZE; x++) {
+                inputs[index] = (
+                    game->en_passant_line_plus1 == x + 1 ? 1.0f : 0.0f
+                );
+                index++;
+            }
         }
     }
 

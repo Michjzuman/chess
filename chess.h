@@ -122,7 +122,7 @@ typedef U0(*VF)(const Game *, bool);
 
 ///////////////////////////
 
-U0 out_of_memory_err();
+U0 out_of_mem();
 
 ///////////////////////////
 
@@ -151,7 +151,7 @@ U0 bg(const Game *game, bool testing);
 
 ///////////////////////////
 
-U0 out_of_memory_err();
+U0 out_of_mem();
 
 #endif
 

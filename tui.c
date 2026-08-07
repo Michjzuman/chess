@@ -23,7 +23,7 @@ static char *notation_line(const Game *game, U16 line_y) {
             game->amount_of_moves / 2 - (15 - line_y) + (game->amount_of_moves % 2)
         );
         char *result = malloc(32);
-        if (result == NULL) out_of_memory_err();
+        if (result == NULL) out_of_mem();
         snprintf(
             result, 32, "%d. %s %s", y,
             game->moves[(y - 1) * 2],
