@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
             } else if (strcmp(argv[i], "--bg") == 0) {
                 run_in_bg = true;
             } else if (strcmp(argv[i] + arg_len - 3, ".nn") == 0) {
+                NN nn = open_nn(argv[i]);
                 for (U32 i2 = strlen(argv[i]); i2 > 1; i2--) {
                     if (argv[i][i2 - 1] == '/') {
                         selected_players[count_selected].name = argv[i] + i2;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
                     strlen(selected_players[i - 1].name) - 3
                 ] = '\0';
                 selected_players[count_selected].function = neural_network;
-                selected_players[count_selected].args = argv[i];
+                selected_players[count_selected].args = &nn;
                 count_selected++;
             } else {
                 bool found = false;
@@ -108,6 +109,11 @@ int main(int argc, char *argv[]) {
                 (char *[]){"white", "black"}[winner - 1] :
                 selected_players[winner - 1].name
             );
+        }
+        for (U8 i = 0; i < 2; i++) {
+            if (selected_players[i].function == neural_network) {
+                close_nn(selected_players[i].args);
+            }
         }
         return 0;
     }
