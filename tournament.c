@@ -35,6 +35,7 @@ typedef struct {
 
 static char *get_path(char *name) {
     char *path = malloc(max_path_len * sizeof(char));
+    if (path == NULL) out_of_mem();
     snprintf(
         path, max_path_len,
         "./brains/%s.nn", name
@@ -59,6 +60,7 @@ static U0 rand_name(char *name) {
 
 U0 *birth(U0 *name) {
     NN *nn = malloc(sizeof(NN));
+    if (nn == NULL) out_of_mem();
     *nn = new_chess_nn();
     char *path = get_path(name);
     save_nn(nn, path);
@@ -73,11 +75,14 @@ static U0 initial_birth(Tournament *t) {
     title("preparation");
     t->round_count = 0;
     t->players = malloc(t->amount_of_players * sizeof(TPlayer));
+    if (t->players == NULL) out_of_mem();
     U8 used_threads = 0;
     pthread_t *threads = malloc(
         t->amount_of_threads * sizeof(pthread_t)
     );
+    if (threads == NULL) out_of_mem();
     U8 *players_threads_i = malloc(t->amount_of_threads * sizeof(U8));
+    if (players_threads_i == NULL) out_of_mem();
     for (U8 i = 0; i < t->amount_of_players; i++) {
         bool found = false;
         while (!found) {
@@ -92,6 +97,7 @@ static U0 initial_birth(Tournament *t) {
         char *heap_name = malloc(
             max_name_len * sizeof(char)
         );
+        if (heap_name == NULL) out_of_mem();
         strcpy(heap_name, t->players[i].name);
         pthread_create(
             &threads[used_threads], NULL,
@@ -163,12 +169,15 @@ static U0 play_round(Tournament *t) {
     U8 used_threads = 0;
     U8 peak_threads = 0;
     pthread_t *threads = malloc(t->amount_of_threads * sizeof(pthread_t));
+    if (threads == NULL) out_of_mem();
     TRound *players_on_thread = malloc(
         t->amount_of_threads * sizeof(TRound)
     );
+    if (players_on_thread == NULL) out_of_mem();
     atomic_bool *thread_states = malloc(
         t->amount_of_threads * sizeof(atomic_bool)
     );
+    if (thread_states == NULL) out_of_mem();
 
     U8 next_thread = 0;
 
@@ -177,26 +186,32 @@ static U0 play_round(Tournament *t) {
         {
             char *path = get_path(t->players[i1].name);
             nns[0] = malloc(sizeof(NN));
+            if (nns[0] == NULL) out_of_mem();
             *nns[0] = open_nn(path);
             free(path);
         }
         atomic_U8 *count[2];
         count[0] = malloc(sizeof(atomic_U8));
+        if (count[0] == NULL) out_of_mem();
         atomic_store(count[0], (t->amount_of_players - i1 - 1) * 2);
         for (U8 i2 = i1 + 1; i2 < t->amount_of_players; i2++) {
             {
                 char *path = get_path(t->players[i2].name);
                 nns[1] = malloc(sizeof(NN));
+                if (nns[1] == NULL) out_of_mem();
                 *nns[1] = open_nn(path);
                 free(path);
             }
             count[1] = malloc(sizeof(atomic_U8));
+            if (count[1] == NULL) out_of_mem();
             atomic_store(count[1], 2);
             for (U8 color = 0; color < 2; color++) {
                 U8 p[2] = {color == 0 ? i1 : i2, color == 0 ? i2 : i1};
                 {
                     SimArgs *args = malloc(sizeof(SimArgs));
+                    if (args == NULL) out_of_mem();
                     args->nns = malloc(2 * sizeof(NN));
+                    if (args->nns == NULL) out_of_mem();
                     args->nns[0] = *nns[0];
                     args->nns[1] = *nns[1];
                     args->thread_state = &thread_states[next_thread];

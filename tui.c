@@ -36,6 +36,7 @@ static char *notation_line(const Game *game, U16 line_y) {
         }
         U8 spaces_len = max_notation_len - strlen(result);
         char *spaces = malloc(spaces_len);
+        if (spaces == NULL) out_of_mem();
         for (U8 i = 0; i < spaces_len; i++) spaces[i] = ' ';
         snprintf(
             result, 32, "%s%s", result, spaces

@@ -7,6 +7,7 @@ U8 codex(const Game *game, U0 *model) {
     }
     U8 index = 0;
     char *history = malloc(history_len);
+    if (history == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->moves[i]); i2++) {
             history[index + i2] = game->moves[i][i2];
@@ -20,6 +21,7 @@ U8 codex(const Game *game, U0 *model) {
     }
     index = 0;
     char *legal_moves = malloc(legal_moves_len);
+    if (legal_moves == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->legal_moves[i].notation); i2++) {
             legal_moves[index + i2] = game->legal_moves[i].notation[i2];
@@ -61,6 +63,7 @@ U8 ollama(const Game *game, U0 *model) {
     }
     U8 index = 0;
     char *history = malloc(history_len);
+    if (history == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->moves[i]); i2++) {
             history[index + i2] = game->moves[i][i2];
@@ -74,6 +77,7 @@ U8 ollama(const Game *game, U0 *model) {
     }
     index = 0;
     char *legal_moves = malloc(legal_moves_len);
+    if (legal_moves == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->legal_moves[i].notation); i2++) {
             legal_moves[index + i2] = game->legal_moves[i].notation[i2];

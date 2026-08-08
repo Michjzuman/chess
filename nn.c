@@ -55,6 +55,7 @@ NN copy_nn(const NN *source) {
             source->amount_of_layers * sizeof(Layer)
         )
     };
+    if (copy.layers == NULL) out_of_mem();
     for (U32 i1 = 0; i1 < source->amount_of_layers; i1++) {
         copy.layers[i1].conf = source->layers[i1].conf;
         U32 prev_layer = (
@@ -67,6 +68,7 @@ NN copy_nn(const NN *source) {
         copy.layers[i1].neurons = malloc(
             layer * sizeof(Neuron)
         );
+        if (copy.layers[i1].neurons == NULL) out_of_mem();
         for (U32 i2 = 0; i2 < layer; i2++) {
             copy.layers[i1].neurons[i2].bias = (
                 source->layers[i1].neurons[i2].bias
@@ -74,6 +76,7 @@ NN copy_nn(const NN *source) {
             copy.layers[i1].neurons[i2].weights = malloc(
                 prev_layer * sizeof(float)
             );
+            if (copy.layers[i1].neurons[i2].weights == NULL) out_of_mem();
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
                 copy.layers[i1].neurons[i2].weights[i3] = (
                     source->layers[i1].neurons[i2].weights[i3]
@@ -172,6 +175,7 @@ NN open_nn(char *path) {
         return nn;
     }
     nn.layers = malloc(nn.amount_of_layers * sizeof(Layer));
+    if (nn.layers == NULL) out_of_mem();
     for (U32 i = 0; i < nn.amount_of_layers; i++) {
         if (fread(&nn.layers[i].conf, sizeof(LayerConf), 1, file) != 1) {
             perror("file could not be written (layer conf)\n");
@@ -188,8 +192,10 @@ NN open_nn(char *path) {
             nn.layers[i1].conf.amount_of_neurons
         );
         nn.layers[i1].neurons = malloc(layer * sizeof(Neuron));
+        if (nn.layers[i1].neurons == NULL) out_of_mem();
         for (U32 i2 = 0; i2 < layer; i2++) {
             nn.layers[i1].neurons[i2].weights = malloc(prev_layer * sizeof(float));
+            if (nn.layers[i1].neurons[i2].weights == NULL) out_of_mem();
             if (fread(&nn.layers[i1].neurons[i2].bias, sizeof(float), 1, file) != 1) {
                 perror("file could not be read (bias)\n");
                 fclose(file);
@@ -216,6 +222,7 @@ float *ask_nn(const NN *nn, float *inputs) {
         );
         U32 layer = nn->layers[i1].conf.amount_of_neurons;
         float *signals = malloc(layer * sizeof(float));
+        if (signals == NULL) out_of_mem();
         for (U32 i2 = 0; i2 < layer; i2++) {
             signals[i2] = nn->layers[i1].neurons[i2].bias;
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
@@ -237,6 +244,7 @@ NN new_chess_nn() {
         .amount_of_layers = (U32)rand() % 1000 + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
+    if (nn.layers == NULL) out_of_mem();
     for (U32 i1 = 0; i1 < nn.amount_of_layers; i1++) {
         nn.layers[i1].conf = (LayerConf){
             .activation = rand() % 4,
@@ -248,6 +256,7 @@ NN new_chess_nn() {
         nn.layers[i1].neurons = malloc(
             nn.layers[i1].conf.amount_of_neurons * sizeof(Neuron)
         );
+        if (nn.layers[i1].neurons == NULL) out_of_mem();
         for (U32 i2 = 0; i2 < nn.layers[i1].conf.amount_of_neurons; i2++) {
             U32 prev_layer = (
                 i1 == 0 ? nn.amount_of_inputs :
@@ -257,6 +266,7 @@ NN new_chess_nn() {
                 .bias = rand_float(-5.0f, 5.0f),
                 .weights = malloc(prev_layer * sizeof(float))
             };
+            if (nn.layers[i1].neurons[i2].weights == NULL) out_of_mem();
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
                 nn.layers[i1].neurons[i2].weights[i3] = rand_float(-5.0f, 5.0f);
             }
@@ -267,7 +277,7 @@ NN new_chess_nn() {
 
 U8 ask_chess_nn(const Game *game, const NN *nn) {
     float *inputs = malloc(nn->amount_of_inputs * sizeof(float));
-
+    if (inputs == NULL) out_of_mem();
     {
         U32 index = 0;
         for (U8 color = 0; color < 2; color++) {

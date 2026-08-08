@@ -359,6 +359,7 @@ U0 add_legal_move(Game *game, Move move) {
             if (move.notation[0] != 'O') {
                 bool is_promotion = move.notation[0] == '=';
                 char *promotion = malloc(is_promotion ? 2 : 0);
+                if (promotion == NULL) out_of_mem();
                 if (is_promotion) strcpy(promotion, move.notation);
                 char letter_char = piece_letters[xy(game, move.start.x, move.start.y).type];
                 char *letter = malloc(letter_char == ' ' ? 0 : 1);
