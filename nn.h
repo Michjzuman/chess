@@ -37,8 +37,6 @@ float *ask_nn(const NN *, float *);
 NN new_chess_nn();
 U8 ask_chess_nn(const Game *, const NN *);
 
-U8 neural_network(const Game *, U0 *nn);
-
 U0 tournament(U8 amount_of_threads);
 
 #endif

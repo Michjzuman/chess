@@ -2,6 +2,7 @@
 #include <stdatomic.h>
 
 #include "chess.h"
+#include "bots.h"
 #include "nn.h"
 #include "tui.h"
 
@@ -16,6 +17,17 @@ typedef struct {
 } TPlayer;
 
 typedef struct {
+    TPlayer *players[2];
+} TRound;
+
+typedef struct {
+    U8 amount_of_threads;
+    U8 amount_of_players;
+    TPlayer *players;
+    U32 round_count;
+} Tournament;
+
+typedef struct {
     NN *nns;
     atomic_bool *thread_state;
     atomic_U8 *count[2];
@@ -28,6 +40,10 @@ static char *get_path(char *name) {
         "./brains/%s.nn", name
     );
     return path;
+}
+
+static U0 title(char *text) {
+    printf("\033[46m\033[1m[ %s ]\033[0m\n", text);
 }
 
 static U0 rand_name(char *name) {
@@ -53,19 +69,22 @@ U0 *birth(U0 *name) {
     return name;
 }
 
-static U0 initial_birth(U8 amount_of_threads, U8 amount_of_players, TPlayer *players) {
+static U0 initial_birth(Tournament *t) {
+    title("preparation");
+    t->round_count = 0;
+    t->players = malloc(t->amount_of_players * sizeof(TPlayer));
     U8 used_threads = 0;
     pthread_t *threads = malloc(
-        amount_of_threads * sizeof(pthread_t)
+        t->amount_of_threads * sizeof(pthread_t)
     );
-    U8 *players_threads_i = malloc(amount_of_threads * sizeof(U8));
-    for (U8 i = 0; i < amount_of_players; i++) {
+    U8 *players_threads_i = malloc(t->amount_of_threads * sizeof(U8));
+    for (U8 i = 0; i < t->amount_of_players; i++) {
         bool found = false;
         while (!found) {
-            rand_name(players[i].name);
+            rand_name(t->players[i].name);
             found = true;
             for (U8 i2 = 0; i2 < i; i2++) {
-                if (strcmp(players[i].name, players[i2].name) == 0) {
+                if (strcmp(t->players[i].name, t->players[i2].name) == 0) {
                     found = false;
                 }
             }
@@ -73,7 +92,7 @@ static U0 initial_birth(U8 amount_of_threads, U8 amount_of_players, TPlayer *pla
         char *heap_name = malloc(
             max_name_len * sizeof(char)
         );
-        strcpy(heap_name, players[i].name);
+        strcpy(heap_name, t->players[i].name);
         pthread_create(
             &threads[used_threads], NULL,
             birth, heap_name
@@ -81,15 +100,15 @@ static U0 initial_birth(U8 amount_of_threads, U8 amount_of_players, TPlayer *pla
         players_threads_i[used_threads] = i;
         used_threads++;
         if (
-            used_threads >= amount_of_threads ||
-            i == amount_of_players - 1
+            used_threads >= t->amount_of_threads ||
+            i == t->amount_of_players - 1
         ) {
-            for (U8 t = 0; t < used_threads; t++) {
-                pthread_join(threads[t], NULL);
+            for (U8 i1 = 0; i1 < used_threads; i1++) {
+                pthread_join(threads[i1], NULL);
                 printf(
-                    "%d/%d: \033[32m%s\033[0m was \033[35mborn\033[0m!\n",
-                    players_threads_i[t] + 1, amount_of_players,
-                    players[players_threads_i[t]].name
+                    "%d/%d: \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
+                    players_threads_i[i1] + 1, t->amount_of_players,
+                    t->players[players_threads_i[i1]].name
                 );
             }
             used_threads = 0;
@@ -127,42 +146,46 @@ U0 *simulate_game(U0 *simargs) {
     return (U0 *)winner;
 }
 
-static U0 play_round(U8 amount_of_threads, U8 amount_of_players, TPlayer *players) {
+static U0 play_round(Tournament *t) {
+    t->round_count++;
+    char title_text[20];
+    snprintf(title_text, 20, "round %d:", t->round_count);
+    title(title_text);
     U32 total_games = 0;
-    for (U8 i = 0; i < amount_of_players; i++) {
-        total_games += (amount_of_players - i - 1) * 2;
+    for (U8 i = 0; i < t->amount_of_players; i++) {
+        total_games += (t->amount_of_players - i - 1) * 2;
     }
     U32 total_game_count = 0;
 
-    for (U8 i = 0; i < amount_of_players; i++) {
-        players[i].points = 0;
+    for (U8 i = 0; i < t->amount_of_players; i++) {
+        t->players[i].points = 0;
     }
     U8 used_threads = 0;
     U8 peak_threads = 0;
-    pthread_t *threads = malloc(amount_of_threads * sizeof(pthread_t));
-    TPlayer (*players_on_thread)[2] = malloc(
-        amount_of_threads * sizeof(*players_on_thread)
+    pthread_t *threads = malloc(t->amount_of_threads * sizeof(pthread_t));
+    TRound *players_on_thread = malloc(
+        t->amount_of_threads * sizeof(TRound)
     );
     atomic_bool *thread_states = malloc(
-        amount_of_threads * sizeof(atomic_bool)
+        t->amount_of_threads * sizeof(atomic_bool)
     );
 
     U8 next_thread = 0;
 
     NN *nns[2];
-    for (U8 i1 = 0; i1 < amount_of_players; i1++) {
+    for (U8 i1 = 0; i1 < t->amount_of_players; i1++) {
         {
-            char *path = get_path(players[i1].name);
+            char *path = get_path(t->players[i1].name);
             nns[0] = malloc(sizeof(NN));
             *nns[0] = open_nn(path);
             free(path);
         }
         atomic_U8 *count[2];
         count[0] = malloc(sizeof(atomic_U8));
-        atomic_store(count[0], (amount_of_players - i1 - 1) * 2);
-        for (U8 i2 = i1 + 1; i2 < amount_of_players; i2++) {
+        atomic_store(count[0], (t->amount_of_players - i1 - 1) * 2);
+        for (U8 i2 = i1 + 1; i2 < t->amount_of_players; i2++) {
             {
-                char *path = get_path(players[i2].name);
+                char *path = get_path(t->players[i2].name);
                 nns[1] = malloc(sizeof(NN));
                 *nns[1] = open_nn(path);
                 free(path);
@@ -183,8 +206,8 @@ static U0 play_round(U8 amount_of_threads, U8 amount_of_players, TPlayer *player
                         &threads[next_thread], NULL,
                         simulate_game, args
                     );
-                    players_on_thread[next_thread][0] = players[p[0]];
-                    players_on_thread[next_thread][1] = players[p[1]];
+                    players_on_thread[next_thread].players[0] = &t->players[p[0]];
+                    players_on_thread[next_thread].players[1] = &t->players[p[1]];
                     used_threads++;
                     if (peak_threads < used_threads) {
                         peak_threads = used_threads;
@@ -193,14 +216,14 @@ static U0 play_round(U8 amount_of_threads, U8 amount_of_players, TPlayer *player
                 }
                 while (used_threads > 0) {
                     next_thread++;
-                    next_thread %= amount_of_threads;
+                    next_thread %= t->amount_of_threads;
                     bool last = (
-                        i1 == amount_of_players - 2 &&
-                        i2 == amount_of_players - 1 &&
+                        i1 == t->amount_of_players - 2 &&
+                        i2 == t->amount_of_players - 1 &&
                         color == 1
                     );
                     if (!atomic_load(&thread_states[next_thread]) || last) {
-                        if (peak_threads >= amount_of_threads) {
+                        if (peak_threads >= t->amount_of_threads) {
                             U0 *response;
                             pthread_join(threads[next_thread], &response);
                             used_threads--;
@@ -209,16 +232,19 @@ static U0 play_round(U8 amount_of_threads, U8 amount_of_players, TPlayer *player
                             printf(
                                 "%d/%d: \033[32m%s\033[0m vs. \033[32m%s\033[0m: ",
                                 total_game_count, total_games,
-                                players_on_thread[next_thread][0].name,
-                                players_on_thread[next_thread][1].name
+                                players_on_thread[next_thread].players[0]->name,
+                                players_on_thread[next_thread].players[1]->name
                             );
                             if (winner == 0) {
                                 printf("\033[33mdraw");
+                                players_on_thread[next_thread].players[0]->points++;
+                                players_on_thread[next_thread].players[1]->points++;
                             } else {
                                 printf(
                                     "\033[32m%s\033[0m \033[36mwon!",
-                                    players_on_thread[next_thread][winner - 1].name
+                                    players_on_thread[next_thread].players[winner - 1]->name
                                 );
+                                players_on_thread[next_thread].players[winner - 1]->points += 2;
                             }
                             printf("\033[0m\n");
                         }
@@ -233,17 +259,35 @@ static U0 play_round(U8 amount_of_threads, U8 amount_of_players, TPlayer *player
     free(threads);
 }
 
+static U0 open_players(Tournament *t) {
+
+}
+
+static U0 sort_players(Tournament *t) {
+    for (U8 i = 0; i < t->amount_of_players; i++) {
+        printf(
+            "%s: %d\n",
+            t->players[i].name,
+            t->players[i].points
+        );
+    }
+}
+
 U0 tournament(U8 amount_of_threads) {
     srand(time(NULL));
 
-    U8 amount_of_players = 5;
+    Tournament t = {
+        .amount_of_threads = amount_of_threads,
+        .amount_of_players = 50
+    };
 
-    TPlayer *players = malloc(amount_of_players * sizeof(TPlayer));
+    initial_birth(&t);
 
-    initial_birth(amount_of_threads, amount_of_players, players);
+    play_round(&t);
 
-    play_round(amount_of_threads, amount_of_players, players);
+    sort_players(&t);
     
-    free(players);
+    title("end");
+    free(t.players);
 }
 
