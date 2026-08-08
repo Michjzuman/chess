@@ -42,11 +42,9 @@ static U0 help() {
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    if (argc > 2) {
-        if (strcmp(argv[1], "training") == 0) {
-            tournament(atoi(argv[2]));
-            return 0;
-        }
+    if (argc > 2 && strcmp(argv[1], "training") == 0) {
+        tournament(atoi(argv[2]));
+        return 0;
     }
 
     struct Player selected_players[2];
@@ -109,11 +107,6 @@ int main(int argc, char *argv[]) {
                 (char *[]){"white", "black"}[winner - 1] :
                 selected_players[winner - 1].name
             );
-        }
-        for (U8 i = 0; i < 2; i++) {
-            if (selected_players[i].function == neural_network) {
-                close_nn(selected_players[i].args);
-            }
         }
         return 0;
     }
