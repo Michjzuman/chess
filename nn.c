@@ -3,6 +3,11 @@
 #include "chess.h"
 #include "nn.h"
 
+/////////////////////////////////////////
+///[ nn.c ]//////////////////////////////
+////////////////[ Author: Michjzuman ]///
+/////////////////////////////////////////
+
 static float linear(float x) { return x; }
 static float relu(float x) { return x > 0.0f ? x : 0.0f; }
 static float sigmoid(float x) { return 1.0f / (1.0f + exp(-x)); }
@@ -278,6 +283,7 @@ NN new_chess_nn() {
 U8 ask_chess_nn(const Game *game, const NN *nn) {
     float *inputs = malloc(nn->amount_of_inputs * sizeof(float));
     if (inputs == NULL) out_of_mem();
+    
     {
         U32 index = 0;
         for (U8 color = 0; color < 2; color++) {
@@ -397,6 +403,7 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
             }
         }
     }
+
     free(answer);
     return result;
 }

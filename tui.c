@@ -97,8 +97,8 @@ static U8 draw_game_full(
                     xy(game, x, y).color == WHITE ? "\033[32m" : "\033[34m"
                 ),
                 star ? '*' : symbols[xy(game, x, y).type],
-                bold ? "\033[1m" : "",
                 marked ? "" : (show_marks ? "\033[90m" : "\033[0m"),
+                bold ? "\033[1m" : "",
                 is_cursor ? ']' : ' '
             );
         }

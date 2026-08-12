@@ -395,6 +395,7 @@ U0 add_legal_move(Game *game, Move move) {
                 );
                 free(letter);
                 free(start_x);
+                free(promotion);
 
                 if (
                     xy(game, move.start.x, move.start.y).type == KNIGHT ||
@@ -579,7 +580,9 @@ U0 calculate_legal_moves(Game *game) {
                 }
             }
         }
-    } 
+    }
+
+    is_check(game);
 
     // Castling
     const U8 y = game->turn == WHITE ? 0 : 7;
