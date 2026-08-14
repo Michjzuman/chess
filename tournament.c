@@ -1,5 +1,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdint.h>
+#include <dirent.h>
 
 #include "chess.h"
 #include "bots.h"
@@ -40,6 +42,18 @@ typedef struct {
     atomic_bool done;
 } RunningGame;
 
+struct Bot {
+    char name[max_name_len];
+    PF function;
+};
+
+static const struct Bot bots[] = {
+    {"jonkler", jonkler},
+    {"thief", thief},
+    {"murderer", murderer}
+};
+const U8 amount_of_bots = sizeof(bots) / sizeof(struct Bot);
+
 static char *get_path(char *name) {
     char *path = malloc(max_path_len * sizeof(char));
     if (path == NULL) out_of_mem();
@@ -65,6 +79,41 @@ static U0 rand_name(char *name) {
     name[len]= '\0';
 }
 
+static U32 open_tplayers(Tournament *t) {
+    char *dirpath = "./brains";
+    DIR *dir = opendir(dirpath);
+    if (dir == NULL) {
+        fprintf(stderr, "path %s could not be opened\n", dirpath);
+    }
+
+    struct dirent *entry;
+
+    U32 count = 0;
+
+    while ((entry = readdir(dir)) != NULL) {
+        char *name = entry->d_name;
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
+        for (U32 i = strlen(name); i > 1; i--) {
+            if (name[i - 1] == '.') {
+                name[i - 1] = '\0'; break;
+            }
+        }
+        printf("%s\n", name);
+        char *path = get_path(name);
+        TPlayer player = {
+            .type = Bot_TPlayer,
+            .arg.nn = open_nn(path)
+        };
+        strcpy(player.name, name);
+        t->players[count + amount_of_bots] = player;
+        free(path);
+        count++;
+    }
+
+    closedir(dir);
+    return count;
+}
+
 U0 *birth(U0 *name) {
     NN *nn = malloc(sizeof(NN));
     if (nn == NULL) out_of_mem();
@@ -72,10 +121,9 @@ U0 *birth(U0 *name) {
     char *path = get_path(name);
     save_nn(nn, path);
     close_nn(nn);
-    free(nn);
     free(path);
     free(name);
-    return name;
+    return NULL;
 }
 
 static U0 initial_birth(Tournament *t) {
@@ -86,7 +134,15 @@ static U0 initial_birth(Tournament *t) {
     U8 used_threads = 0;
     pthread_t threads[t->amount_of_threads];
     U8 players_threads_i[t->amount_of_threads];
-    for (U8 i = 0; i < t->amount_of_players; i++) {
+    for (U8 i = 0; i < amount_of_bots; i++) {
+        t->players[i] = (TPlayer){
+            .arg.bot =  bots[i].function,
+            .type = Bot_TPlayer
+        };
+        strcpy(t->players[i].name, bots[i].name);
+    }
+    const U32 existing_players = amount_of_bots/* + open_tplayers(t)*/;
+    for (U8 i = existing_players; i < t->amount_of_players; i++) {
         bool found = false;
         while (!found) {
             rand_name(t->players[i].name);
@@ -102,6 +158,7 @@ static U0 initial_birth(Tournament *t) {
         );
         if (heap_name == NULL) out_of_mem();
         strcpy(heap_name, t->players[i].name);
+        t->players[i].type = NN_TPlayer;
         pthread_create(
             &threads[used_threads], NULL,
             birth, heap_name
@@ -116,7 +173,8 @@ static U0 initial_birth(Tournament *t) {
                 pthread_join(threads[i1], NULL);
                 printf(
                     "%d/%d: \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
-                    players_threads_i[i1] + 1, t->amount_of_players,
+                    players_threads_i[i1] + 1 - existing_players,
+                    t->amount_of_players - existing_players,
                     t->players[players_threads_i[i1]].name
                 );
             }
@@ -127,16 +185,17 @@ static U0 initial_birth(Tournament *t) {
 
 U0 *simulate_game(U0 *simargs) {
     RunningGame *game = simargs;
-
+    //printf("----- [start] ---------------------------\n");
     struct {PF function; U0 *args;} pfs[2];
 
     for (U8 i = 0; i < 2; i++) {
         TPlayer *player = &game->t->players[game->p[i]];
         if (player->type == NN_TPlayer) {
             pfs[i].function = neural_network;
-            pfs[i].args = (U0 *)&player->arg.nn;
+            pfs[i].args = player->arg.nn;
         } else {
             pfs[i].function = player->arg.bot;
+            pfs[i].args = NULL;
         }
     }
 
@@ -144,17 +203,20 @@ U0 *simulate_game(U0 *simargs) {
         pfs[0].function, pfs[0].args,
         pfs[1].function, pfs[1].args
     );
+    //printf("----- [end] ---------------------------\n");
 
     for (U8 i = 0; i < 2; i++) {
         TPlayer *player = &game->t->players[game->p[i]];
         atomic_U8 *in_use = &player->in_use;
-        atomic_store(in_use, atomic_load(in_use) - 1);
-        if (
-            player->type == NN_TPlayer &&
-            atomic_load(in_use) <= 0
-        ) {
-            close_nn(player->arg.nn);
-            free(player->arg.nn);
+        if (player->type == NN_TPlayer) {
+            atomic_store(in_use, atomic_load(in_use) - 1);
+            if (atomic_load(in_use) <= 0) {
+                /*printf(
+                    "#################################### %s --> free\n",
+                    player->name
+                );*/
+                close_nn(player->arg.nn);
+            }
         }
     }
 
@@ -163,15 +225,80 @@ U0 *simulate_game(U0 *simargs) {
     return (U0 *)winner;
 }
 
+static U0 start_simulation(RunningGame *game) {
+    for (U32 p = 0; p < 2; p++) {
+        TPlayer *player = &game->t->players[game->p[p]];
+        if (player->type == NN_TPlayer) {
+            atomic_store(&player->in_use, atomic_load(&player->in_use) + 1);
+        }
+        if (atomic_load(&player->in_use) == 1) {
+            char *path = get_path(player->name);
+            /*printf(
+                "#################################### %s <-- %s\n",
+                player->name, path
+            );*/
+            player->arg.nn = open_nn(path);
+            free(path);
+        }
+    }
+    pthread_create(
+        &game->thread, NULL, simulate_game, game
+    );
+}
+
+static U0 end_simulation(
+    Tournament *t, RunningGame *all_games, U32 total_games,
+    U32 total_game_count, U32 next_game
+) {
+    bool found = false;
+    while (!found) {
+        for (U8 i2 = 0; i2 < next_game; i2++) {
+            if (atomic_load(&all_games[i2].done)) {
+                uintptr_t winner;
+                pthread_join(all_games[i2].thread, (U0 *)&winner);
+                total_game_count++;
+                printf(
+                    "%d/%d: \033[%sm%s\033[0m vs. \033[%sm%s\033[0m -> ",
+                    total_game_count, total_games,
+                    t->players[all_games[i2].p[0]].type == Bot_TPlayer ? "92" : "32",
+                    t->players[all_games[i2].p[0]].name,
+                    t->players[all_games[i2].p[1]].type == Bot_TPlayer ? "92" : "32",
+                    t->players[all_games[i2].p[1]].name
+                );
+                if (winner == 0) {
+                    printf("\033[90mdraw\033[0m");
+                    t->players[all_games[i2].p[0]].points++;
+                    t->players[all_games[i2].p[1]].points++;
+                } else {
+                    printf(
+                        "\033[33mwinner\033[0m: \033[%sm%s\033[0m",
+                        t->players[all_games[i2].p[winner - 1]].type == Bot_TPlayer ? "92" : "32",
+                        t->players[all_games[i2].p[winner - 1]].name
+                    );
+                    t->players[all_games[i2].p[winner - 1]].points += 2;
+                }
+                printf("\n");
+                
+                atomic_store(&all_games[i2].done, false);
+                found = true;
+                break;
+            }
+        }
+    }
+}
+
 static U0 play_round(Tournament *t) {
     t->round_count++;
-    char title_text[20];
-    snprintf(title_text, 20, "round %d:", t->round_count);
-    title(title_text);
+    {
+        char title_text[20];
+        snprintf(title_text, 20, "round %d:", t->round_count);
+        title(title_text);
+    }
     U32 total_games = 0;
     for (U8 i = 0; i < t->amount_of_players; i++) {
         total_games += (t->amount_of_players - i - 1) * 2;
     }
+    U32 total_game_count = 0;
 
     for (U8 i = 0; i < t->amount_of_players; i++) {
         t->players[i].points = 0;
@@ -197,37 +324,25 @@ static U0 play_round(Tournament *t) {
     }
 
     for (U32 i = 0; i < t->amount_of_threads && i < total_games; i++) {
-        pthread_create(
-            &all_games[i].thread, NULL, simulate_game, &all_games[i]
-        );
+        start_simulation(&all_games[i]);
     }
-
-    for (U32 i = t->amount_of_threads; i < total_games - t->amount_of_threads; i++) {
-        bool found = false;
-        while (!found) {
-            for (U8 i2 = 0; i2 < i; i2++) {
-                if (atomic_load(&all_games[i2].done)) {
-                    U8 winner;
-                    pthread_join(all_games[i2].thread, (U0 *)&winner);
-
-                    pthread_create(
-                        &all_games[i].thread, NULL, simulate_game, &all_games[i]
-                    );
-                    found = true;
-                }
-            }
-        }
+    U32 next_game = t->amount_of_threads; 
+    while (next_game < total_games) {
+        end_simulation(t, all_games, total_games, total_game_count, next_game);
+        start_simulation(&all_games[next_game]);
+        next_game++;
+        total_game_count++;
     }
-}
-
-static U0 open_tplayers(Tournament *t) {
-    
+    for (U8 i = 0; i < t->amount_of_threads && i < total_games; i++) {
+        end_simulation(t, all_games, total_games, total_game_count, total_games);
+        total_game_count++;
+    }
 }
 
 static int compare_tplayers(const U0 *a, const U0 *b) {
     U32 ap = ((TPlayer *)a)->points;
     U32 bp = ((TPlayer *)b)->points;
-    return (ap > bp) - (ap < bp);
+    return (ap < bp) - (ap > bp);
 }
 
 static U0 sort_players(Tournament *t) {
@@ -249,7 +364,7 @@ U0 tournament(U8 amount_of_threads) {
 
     Tournament t = {
         .amount_of_threads = amount_of_threads,
-        .amount_of_players = 3
+        .amount_of_players = 6
     };
 
     initial_birth(&t);

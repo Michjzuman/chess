@@ -65,7 +65,7 @@ static U0 help() {
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    if (argc > 2 && strcmp(argv[1], "training") == 0) {
+    if (argc > 2 && strcmp(argv[1], "tournament") == 0) {
         tournament(atoi(argv[2]));
         return 0;
     }
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
                 run_in_bg = true;
                 benchmark = true;
             } else if (strcmp(argv[i] + arg_len - 3, ".nn") == 0) {
-                NN nn = open_nn(argv[i]);
+                NN *nn = open_nn(argv[i]);
                 for (U32 i2 = strlen(argv[i]); i2 > 1; i2--) {
                     if (argv[i][i2 - 1] == '/') {
                         selected_players[count_selected].name = argv[i] + i2;
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
                 U8 name_len = strlen(selected_players[count_selected].name);
                 //selected_players[count_selected].name[name_len - 3] = '\0';
                 selected_players[count_selected].function = neural_network;
-                selected_players[count_selected].args = &nn;
+                selected_players[count_selected].args = nn;
                 count_selected++;
             } else {
                 bool found = false;

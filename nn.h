@@ -30,7 +30,7 @@ U0 close_nn(NN *);
 NN copy_nn(const NN *);
 NN mutate_nn(const NN *);
 U0 save_nn(const NN *, char *path);
-NN open_nn(char *path);
+NN *open_nn(char *path);
 
 float *ask_nn(const NN *, float *);
 
