@@ -34,7 +34,7 @@ typedef struct {
     U8 amount_of_players;
     U8 target_amount_of_players;
     TPlayer *players;
-    U64 round_count;
+    U32 round_count;
 } Tournament;
 
 typedef struct {
@@ -303,7 +303,7 @@ static U0 play_round(Tournament *t) {
     t->round_count++;
     {
         char title_text[20];
-        snprintf(title_text, 20, "round %llu:", t->round_count);
+        snprintf(title_text, 20, "round %u:", t->round_count);
         title(title_text);
     }
     U32 total_games = 0;
