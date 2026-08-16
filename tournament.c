@@ -264,7 +264,7 @@ static U0 end_simulation(
 ) {
     bool found = false;
     while (!found) {
-        for (U8 i2 = 0; i2 < next_game; i2++) {
+        for (U32 i2 = 0; i2 < next_game; i2++) {
             if (atomic_load(&all_games[i2].done)) {
                 uintptr_t winner;
                 pthread_join(all_games[i2].thread, (U0 *)&winner);
