@@ -4,9 +4,11 @@ This is a chess engine written in C for fun
 
 ---
 
+### Build
+
 Requirements:
 ```bash
-sudo apt install llvm clang git
+brew install llvm clang git
 ```
 
 Download:
@@ -22,5 +24,5 @@ clang *.c -o /usr/bin/chess
 
 Run:
 ```
-./chess
+chess
 ```

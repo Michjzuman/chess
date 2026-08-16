@@ -53,38 +53,39 @@ U0 close_nn(NN *nn) {
     free(nn);
 }
 
-NN copy_nn(const NN *source) {
-    NN copy = {
+NN *copy_nn(const NN *source) {
+    NN *copy = malloc(sizeof(NN));
+    *copy = (NN){
         .amount_of_inputs = source->amount_of_inputs,
         .amount_of_layers = source->amount_of_layers,
         .layers = malloc(
             source->amount_of_layers * sizeof(Layer)
         )
     };
-    if (copy.layers == NULL) out_of_mem();
+    if (copy->layers == NULL) out_of_mem();
     for (U32 i1 = 0; i1 < source->amount_of_layers; i1++) {
-        copy.layers[i1].conf = source->layers[i1].conf;
+        copy->layers[i1].conf = source->layers[i1].conf;
         U32 prev_layer = (
-            i1 == 0 ? copy.amount_of_inputs :
-            copy.layers[i1 - 1].conf.amount_of_neurons
+            i1 == 0 ? copy->amount_of_inputs :
+            copy->layers[i1 - 1].conf.amount_of_neurons
         );
         U32 layer = (
-            copy.layers[i1].conf.amount_of_neurons
+            copy->layers[i1].conf.amount_of_neurons
         );
-        copy.layers[i1].neurons = malloc(
+        copy->layers[i1].neurons = malloc(
             layer * sizeof(Neuron)
         );
-        if (copy.layers[i1].neurons == NULL) out_of_mem();
+        if (copy->layers[i1].neurons == NULL) out_of_mem();
         for (U32 i2 = 0; i2 < layer; i2++) {
-            copy.layers[i1].neurons[i2].bias = (
+            copy->layers[i1].neurons[i2].bias = (
                 source->layers[i1].neurons[i2].bias
             );
-            copy.layers[i1].neurons[i2].weights = malloc(
+            copy->layers[i1].neurons[i2].weights = malloc(
                 prev_layer * sizeof(float)
             );
-            if (copy.layers[i1].neurons[i2].weights == NULL) out_of_mem();
+            if (copy->layers[i1].neurons[i2].weights == NULL) out_of_mem();
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
-                copy.layers[i1].neurons[i2].weights[i3] = (
+                copy->layers[i1].neurons[i2].weights[i3] = (
                     source->layers[i1].neurons[i2].weights[i3]
                 );
             }
@@ -93,26 +94,26 @@ NN copy_nn(const NN *source) {
     return copy;
 }
 
-NN mutate_nn(const NN *source) {
-    NN mutation = copy_nn(source);
+NN *mutate_nn(const NN *source) {
+    NN *mutation = copy_nn(source);
     for (U8 i = 0; i < (U8)rand() % 100 + 1; i++) {
-        U32 layer = (U32)rand() % mutation.amount_of_layers;
+        U32 layer = (U32)rand() % mutation->amount_of_layers;
         U32 amount_of_neurons = (
-            mutation.layers[layer].conf.amount_of_neurons
+            mutation->layers[layer].conf.amount_of_neurons
         );
         U32 neuron = (U32)rand() % amount_of_neurons;
         if ((U8)rand() % 2 == 0) {
-            mutation.layers[layer].neurons[neuron].bias *= (
+            mutation->layers[layer].neurons[neuron].bias *= (
                 rand_float(-2.0, 2.0)
             );
         } else {
             U32 weight = (
                 (U32)rand() % (
-                    i == 0 ? mutation.amount_of_inputs :
-                    mutation.layers[layer].conf.amount_of_neurons
+                    i == 0 ? mutation->amount_of_inputs :
+                    mutation->layers[layer].conf.amount_of_neurons
                 )
             );
-            mutation.layers[layer].neurons[neuron].weights[weight] *= (
+            mutation->layers[layer].neurons[neuron].weights[weight] *= (
                 rand_float(-2.0, 2.0)
             );
         }
@@ -130,15 +131,15 @@ U0 save_nn(const NN *nn, char *path) {
         fwrite(&nn->amount_of_inputs, sizeof(U32), 1, file) != 1 ||
         fwrite(&nn->amount_of_layers, sizeof(U32), 1, file) != 1
     ) {
-        perror("file could not be written\n");
+        fprintf(stderr, "file could not be written\n");
         fclose(file);
-        return;
+        exit(1);
     }
     for (U32 i = 0; i < nn->amount_of_layers; i++) {
         if (fwrite(&nn->layers[i].conf, sizeof(LayerConf), 1, file) != 1) {
-            perror("file could not be written (layers)\n");
+            fprintf(stderr, "file could not be written (layers)\n");
             fclose(file);
-            return;
+            exit(1);
         };
     }
     for (U32 i1 = 0; i1 < nn->amount_of_layers; i1++) {
@@ -151,14 +152,14 @@ U0 save_nn(const NN *nn, char *path) {
         );
         for (U32 i2 = 0; i2 < layer; i2++) {
             if (fwrite(&nn->layers[i1].neurons[i2].bias, sizeof(float), 1, file) != 1) {
-                perror("file could not be written (bias)\n");
+                fprintf(stderr, "file could not be written (bias)\n");
                 fclose(file);
-                return;
+                exit(1);
             }
             if (fwrite(nn->layers[i1].neurons[i2].weights, sizeof(float), prev_layer, file) != prev_layer) {
-                perror("file could not be written (weights)\n");
+                fprintf(stderr, "file could not be written (weights)\n");
                 fclose(file);
-                return;
+                exit(1);
             }
         }
     }
@@ -176,17 +177,17 @@ NN *open_nn(char *path) {
         fread(&nn->amount_of_inputs, sizeof(U32), 1, file) != 1 ||
         fread(&nn->amount_of_layers, sizeof(U32), 1, file) != 1
     ) {
-        perror("file could not be read\n");
+        fprintf(stderr, "file could not be read\n");
         fclose(file);
-        return nn;
+        exit(1);
     }
     nn->layers = malloc(nn->amount_of_layers * sizeof(Layer));
     if (nn->layers == NULL) out_of_mem();
     for (U32 i = 0; i < nn->amount_of_layers; i++) {
         if (fread(&nn->layers[i].conf, sizeof(LayerConf), 1, file) != 1) {
-            perror("file could not be written (layer conf)\n");
+            fprintf(stderr, "file could not be written (layer conf)\n");
             fclose(file);
-            return nn;
+            exit(1);
         };
     }
     for (U32 i1 = 0; i1 < nn->amount_of_layers; i1++) {
@@ -203,14 +204,14 @@ NN *open_nn(char *path) {
             nn->layers[i1].neurons[i2].weights = malloc(prev_layer * sizeof(float));
             if (nn->layers[i1].neurons[i2].weights == NULL) out_of_mem();
             if (fread(&nn->layers[i1].neurons[i2].bias, sizeof(float), 1, file) != 1) {
-                perror("file could not be read (bias)\n");
+                fprintf(stderr, "file could not be read (bias)\n");
                 fclose(file);
-                return nn;
+                exit(1);
             }
             if (fread(nn->layers[i1].neurons[i2].weights, sizeof(float), prev_layer, file) != prev_layer) {
-                perror("file could not be read (weights)\n");
+                fprintf(stderr, "file could not be read (weights)\n");
                 fclose(file);
-                return nn;
+                exit(1);
             }
         }
     }

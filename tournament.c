@@ -10,6 +10,7 @@
 
 #define max_name_len 9
 #define max_path_len 21
+#define survivors 4
 
 typedef atomic_int_least8_t atomic_U8;
 
@@ -31,8 +32,9 @@ typedef struct {
 typedef struct {
     U8 amount_of_threads;
     U8 amount_of_players;
+    U8 target_amount_of_players;
     TPlayer *players;
-    U32 round_count;
+    U64 round_count;
 } Tournament;
 
 typedef struct {
@@ -80,10 +82,13 @@ static U0 rand_name(char *name) {
 }
 
 static U32 open_tplayers(Tournament *t) {
+    t->amount_of_players = t->target_amount_of_players;
+
     char *dirpath = "./brains";
     DIR *dir = opendir(dirpath);
     if (dir == NULL) {
         fprintf(stderr, "path %s could not be opened\n", dirpath);
+        exit(1);
     }
 
     struct dirent *entry;
@@ -92,19 +97,23 @@ static U32 open_tplayers(Tournament *t) {
 
     while ((entry = readdir(dir)) != NULL) {
         char *name = entry->d_name;
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
-        for (U32 i = strlen(name); i > 1; i--) {
-            if (name[i - 1] == '.') {
-                name[i - 1] = '\0'; break;
-            }
-        }
-        printf("%s\n", name);
+        if (
+            strcmp(name, ".") == 0 ||
+            strcmp(name, "..") == 0 ||
+            strcmp(name + strlen(name) - 3, ".nn") != 0
+        ) continue;
+        name[strlen(name) - 3] = '\0';
         char *path = get_path(name);
+        printf("- \033[32m%s\033[0m found in %s\n", name, path);
         TPlayer player = {
-            .type = Bot_TPlayer,
-            .arg.nn = open_nn(path)
+            .type = NN_TPlayer
         };
         strcpy(player.name, name);
+        if (t->amount_of_players <= count + amount_of_bots) {
+            t->amount_of_players++;
+            t->players = realloc(t->players, t->amount_of_players * sizeof(TPlayer));
+        }
+        if (t->players == NULL) out_of_mem();
         t->players[count + amount_of_bots] = player;
         free(path);
         count++;
@@ -126,23 +135,14 @@ U0 *birth(U0 *name) {
     return NULL;
 }
 
-static U0 initial_birth(Tournament *t) {
-    title("preparation");
-    t->round_count = 0;
-    t->players = malloc(t->amount_of_players * sizeof(TPlayer));
-    if (t->players == NULL) out_of_mem();
+static U0 give_birth(Tournament *t, U8 start) {
+    t->amount_of_players = t->target_amount_of_players;
     U8 used_threads = 0;
     pthread_t threads[t->amount_of_threads];
     U8 players_threads_i[t->amount_of_threads];
-    for (U8 i = 0; i < amount_of_bots; i++) {
-        t->players[i] = (TPlayer){
-            .arg.bot =  bots[i].function,
-            .type = Bot_TPlayer
-        };
-        strcpy(t->players[i].name, bots[i].name);
-    }
-    const U32 existing_players = amount_of_bots/* + open_tplayers(t)*/;
-    for (U8 i = existing_players; i < t->amount_of_players; i++) {
+    t->players = realloc(t->players, t->target_amount_of_players * sizeof(TPlayer));
+    if (t->players == NULL) out_of_mem();
+    for (U8 i = start; i < t->target_amount_of_players; i++) {
         bool found = false;
         while (!found) {
             rand_name(t->players[i].name);
@@ -159,10 +159,7 @@ static U0 initial_birth(Tournament *t) {
         if (heap_name == NULL) out_of_mem();
         strcpy(heap_name, t->players[i].name);
         t->players[i].type = NN_TPlayer;
-        pthread_create(
-            &threads[used_threads], NULL,
-            birth, heap_name
-        );
+        pthread_create(&threads[used_threads], NULL, birth, heap_name);
         players_threads_i[used_threads] = i;
         used_threads++;
         if (
@@ -173,14 +170,29 @@ static U0 initial_birth(Tournament *t) {
                 pthread_join(threads[i1], NULL);
                 printf(
                     "%d/%d: \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
-                    players_threads_i[i1] + 1 - existing_players,
-                    t->amount_of_players - existing_players,
+                    players_threads_i[i1] + 1 - start,
+                    t->amount_of_players - start,
                     t->players[players_threads_i[i1]].name
                 );
             }
             used_threads = 0;
         }
     }
+}
+
+static U0 initial_birth(Tournament *t) {
+    title("preparation");
+    t->players = malloc(t->target_amount_of_players * sizeof(TPlayer));
+    if (t->players == NULL) out_of_mem();
+    for (U8 i = 0; i < amount_of_bots; i++) {
+        t->players[i] = (TPlayer){
+            .arg.bot =  bots[i].function,
+            .type = Bot_TPlayer
+        };
+        strcpy(t->players[i].name, bots[i].name);
+    }
+    const U32 existing_players = amount_of_bots + open_tplayers(t);
+    give_birth(t, existing_players);
 }
 
 U0 *simulate_game(U0 *simargs) {
@@ -291,7 +303,7 @@ static U0 play_round(Tournament *t) {
     t->round_count++;
     {
         char title_text[20];
-        snprintf(title_text, 20, "round %d:", t->round_count);
+        snprintf(title_text, 20, "round %llu:", t->round_count);
         title(title_text);
     }
     U32 total_games = 0;
@@ -346,12 +358,12 @@ static int compare_tplayers(const U0 *a, const U0 *b) {
 }
 
 static U0 sort_players(Tournament *t) {
+    title("ranking");
     qsort(
         t->players, t->amount_of_players,
         sizeof(TPlayer), compare_tplayers
     );
-    title("ranking");
-    for (U8 i = 0; i < 10 && i < t->amount_of_players; i++) {
+    for (U8 i = 0; i < survivors && i < t->amount_of_players; i++) {
         printf(
             "%d. \033[32m%s\033[0m (%d)\n", i + 1,
             t->players[i].name, t->players[i].points
@@ -359,19 +371,95 @@ static U0 sort_players(Tournament *t) {
     }
 }
 
+static U0 elimination(Tournament *t) {
+    title("elimination");
+    for (U8 i = survivors; i < t->amount_of_players; i++) {
+        if (t->players[i].type == NN_TPlayer) {
+            char *path = get_path(t->players[i].name);
+            if (remove(path) == 0) {
+                printf(
+                    "%d/%d \033[32m%s\033[0m has \033[31mdied\033[0m\n",
+                    i - survivors + 1, t->amount_of_players - survivors, t->players[i].name
+                );
+            } else {
+                printf(
+                    "%d/%d \033[32m%s\033[0m was \033[31meliminated\033[0m but his file could not be removed\n",
+                    i - survivors + 1, t->amount_of_players - survivors, t->players[i].name
+                );
+            }
+            free(path);
+        } else {
+            printf(
+                "%d/%d \033[32m%s\033[0m was \033[31meliminated\033[0m\n",
+                i - survivors + 1, t->amount_of_players - survivors, t->players[i].name
+            );
+        }
+    }
+}
+
+static U0 repopulation(Tournament *t) {
+    title("repopulation");
+    U32 current_amount_of_players = survivors;
+    for (U8 i = 0; i < survivors; i++) {
+        if (t->players[i].type == NN_TPlayer) {
+            char *parent_nn_path = get_path(t->players[i].name);
+            NN *parent_nn = open_nn(parent_nn_path);
+            for (U8 i2 = 0; i2 < i; i2++) {
+                TPlayer child;
+                child.type = NN_TPlayer;
+                bool found = false;
+                while (!found) {
+                    rand_name(child.name);
+                    found = true;
+                    for (U8 i3 = 0; i3 < current_amount_of_players; i3++) {
+                        if (strcmp(child.name, t->players[i3].name) == 0) {
+                            found = false;
+                        }
+                    }
+                }
+                char *child_nn_path = get_path(child.name);
+                NN *child_nn = mutate_nn(parent_nn);
+                save_nn(child_nn, child_nn_path);
+                free(child_nn_path);
+                t->players[current_amount_of_players] = child;
+                printf(
+                    "%d/%d: \033[32m%s\033[0m SON of \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
+                    i2 + 1, i,
+                    t->players[current_amount_of_players].name,
+                    t->players[i].name
+                );
+                current_amount_of_players++;
+            }
+            free(parent_nn_path);
+            close_nn(parent_nn);
+        }
+    }
+    give_birth(t, current_amount_of_players);
+    t->amount_of_players = t->target_amount_of_players;
+}
+
 U0 tournament(U8 amount_of_threads) {
     srand(time(NULL));
 
+    const U8 amount_of_players = 7;
+    
     Tournament t = {
         .amount_of_threads = amount_of_threads,
-        .amount_of_players = 6
+        .target_amount_of_players = amount_of_players,
+        .round_count = 0
     };
 
     initial_birth(&t);
+    
+    for (U8 i = 0; i < 5; i++) {
+        play_round(&t);
 
-    play_round(&t);
+        sort_players(&t);
 
-    sort_players(&t);
+        elimination(&t);
+        
+        repopulation(&t);
+    }
     
     title("end");
     free(t.players);
