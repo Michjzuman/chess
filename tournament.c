@@ -10,7 +10,7 @@
 
 #define max_name_len 9
 #define max_path_len 21
-#define survivors 4
+#define survivors 7
 
 typedef atomic_int_least8_t atomic_U8;
 
@@ -441,7 +441,7 @@ static U0 repopulation(Tournament *t) {
 U0 tournament(U8 amount_of_threads) {
     srand(time(NULL));
 
-    const U8 amount_of_players = 7;
+    const U8 amount_of_players = 32;
     
     Tournament t = {
         .amount_of_threads = amount_of_threads,
@@ -451,7 +451,7 @@ U0 tournament(U8 amount_of_threads) {
 
     initial_birth(&t);
     
-    for (U8 i = 0; i < 5; i++) {
+    while (true) {
         play_round(&t);
 
         sort_players(&t);
