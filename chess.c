@@ -229,10 +229,7 @@ U0 is_draw(Game *game) {
 
     Game test_game = new_game();
 
-    TwoPieces (*positions)[SIZE][SIZE / 2] = malloc(
-        game->amount_of_moves * sizeof(TwoPieces) * SIZE * (SIZE / 2)
-    );
-    if (positions == NULL) out_of_mem();
+    TwoPieces positions[game->amount_of_moves][SIZE][SIZE / 2];
 
     for (U16 i1 = 0; i1 < game->amount_of_moves; i1++) {
         bool works = false;
@@ -281,7 +278,6 @@ U0 is_draw(Game *game) {
             }
         }
     }
-    free(positions);
     close_game(&test_game);
 }
 
