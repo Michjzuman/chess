@@ -10,8 +10,6 @@ static const char abc[] = ABC;
 
 U0 calculate_legal_moves(Game *game);
 
-U0 raw_move(Game *game, Move move);
-
 U0 out_of_mem() {
     fprintf(stderr, "Ou shiii 👀. Out of Memory\n");
     exit(1);
@@ -754,8 +752,7 @@ U8 play(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2) {
         bool legal = do_move(&game, notation);
         
         if (!legal) {
-            free(game.moves);
-            free(game.legal_moves);
+            close_game(&game);
             return 0;
         };
         

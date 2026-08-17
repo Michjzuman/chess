@@ -23,6 +23,6 @@ clang *.c -o /usr/bin/chess
 ```
 
 Run:
-```
+```bash
 chess
 ```
