@@ -8,8 +8,6 @@
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
-U0 calculate_legal_moves(Game *game);
-
 U0 out_of_mem() {
     fprintf(stderr, "Ou shiii 👀. Out of Memory\n");
     exit(1);
