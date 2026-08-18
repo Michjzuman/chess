@@ -130,8 +130,6 @@ U0 close_game(Game *game);
 
 U0 is_check(Game *game);
 
-U0 calculate_legal_moves(Game *game);
-
 U0 raw_move(Game *game, Move move);
 
 bool do_move(

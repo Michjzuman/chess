@@ -138,16 +138,25 @@ int main(int argc, char *argv[]) {
                 if (first || playing_human) first = false; else {
                     printf("\033[3F");
                 }
-                printf(
-                    "draw: %d\n"
-                    "%s: %d\n"
-                    "%s: %d\n",
-                    results[0],
-                    same ? color_names[0] : selected_players[0].name,
-                    results[1],
-                    same ? color_names[1] : selected_players[1].name,
-                    results[2]
-                );
+                U8 max_name_len = 4;
+                U8 name_lens[] = {
+                    strlen(selected_players[0].name),
+                    strlen(selected_players[1].name)
+                };
+                if (name_lens[0] > max_name_len) max_name_len = name_lens[0];
+                if (name_lens[1] > max_name_len) max_name_len = name_lens[1];
+                printf("draw: ");
+                for (U8 i = 0; i < max_name_len - 4; i++) printf(" ");
+                printf("%d\n", results[0]);
+                for (U8 p = 0; p < 2; p++) {
+                    printf("%s: ",
+                        same ? color_names[p] : selected_players[p].name
+                    );
+                    for (U8 i = 0; i < max_name_len - name_lens[p]; i++) {
+                        printf(" ");
+                    }
+                    printf("%d\n", results[p + 1]);
+                }
                 U8 winner = play(run_in_bg ? bg : tui,
                     selected_players[switch_players].function,
                     selected_players[switch_players].args,
