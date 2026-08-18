@@ -20,17 +20,18 @@ CompactGame compact_game(const Game *game) {
 
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         char *notation = game->moves[i];
-        
+
         bool legal = false;
-        for (U8 lm = 0; lm < game->amount_of_legal_moves; lm++) {
-            if (strcmp(game->legal_moves[lm].notation, notation) == 0) {
-                raw_move(&test_game, game->legal_moves[i]);
+        for (U8 lm = 0; lm < test_game.amount_of_legal_moves; lm++) {
+            if (strcmp(test_game.legal_moves[lm].notation, notation) == 0) {
+                compact.moves[i] = lm;
+                raw_move(&test_game, test_game.legal_moves[lm]);
                 legal = true;
             }
         }
-        
+
         if (!legal) {
-            close_game(&test_game);
+            printf("illegal!!!!!\n");
             break;
         };
 
@@ -38,7 +39,6 @@ CompactGame compact_game(const Game *game) {
             test_game.amount_of_legal_moves <= 0
             && test_game.check
         ) {
-            close_game(&test_game);
             compact.result = (
                 test_game.turn == WHITE ?
                 WHITE_WON : BLACK_WON
@@ -46,21 +46,31 @@ CompactGame compact_game(const Game *game) {
             break;
         }
         if (test_game.draw) {
-            close_game(&test_game);
             compact.result = DRAW;
             break;
         }
-
-        test_game.turn = 1 - test_game.turn;
     }
 
     close_game(&test_game);
+
+    for (U16 i = 0; i < compact.len; i++) {
+        printf("%d, ", compact.moves[i]);
+    }
+    printf("\n");
+    exit(0);
+    
     return compact;
+}
+
+U0 write_compactgame_to_file(CompactGame *compact) {
+
 }
 
 U8 stockfih(const Game *game, U0 *args) {
 
-
+    if (game->amount_of_moves > 30) {
+        CompactGame compact = compact_game(game);
+    }
 
     return 0;
 }

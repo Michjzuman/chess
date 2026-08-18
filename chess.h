@@ -110,12 +110,6 @@ U0 set_xy(Game *, U8 x, U8 y, Piece new);
 
 ///////////////////////////
 
-typedef struct {
-    U8 *moves;
-} CompactGame;
-
-///////////////////////////
-
 typedef U8(*PF)(const Game *, U0 *);
 
 typedef U0(*VF)(const Game *, bool);
@@ -135,6 +129,10 @@ Game copy_game(
 U0 close_game(Game *game);
 
 U0 is_check(Game *game);
+
+U0 calculate_legal_moves(Game *game);
+
+U0 raw_move(Game *game, Move move);
 
 bool do_move(
     Game *game,
