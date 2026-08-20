@@ -132,6 +132,8 @@ U0 is_check(Game *game);
 
 U0 raw_move(Game *game, Move move);
 
+U0 raw_move_minimal(Game *game, Move move);
+
 U0 calculate_legal_moves(Game *game);
 
 bool do_move(

@@ -1,4 +1,5 @@
 #include "chess.h"
+#include "tui.h"
 
 enum CompactGameResult {
     UNDEFINED, DRAW,
@@ -14,12 +15,20 @@ typedef struct {
 CompactGame compact_game(const Game *game) {
     CompactGame compact;
     compact.len = game->amount_of_moves;
-    compact.moves =  malloc(compact.len);
+    compact.moves =  malloc(compact.len * sizeof(U8));
 
     Game test_game = new_game();
 
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         char *notation = game->moves[i];
+
+        tui_small(&test_game, true);
+        
+        for (U8 t = 0; t < test_game.amount_of_legal_moves; t++) {
+            printf("%s ", test_game.legal_moves[t].notation);
+        }
+        printf("\n");
+        printf("{ %s }\n", notation);
 
         bool legal = false;
         for (U8 lm = 0; lm < test_game.amount_of_legal_moves; lm++) {
@@ -31,7 +40,10 @@ CompactGame compact_game(const Game *game) {
         }
 
         if (!legal) {
-            printf("illegal!!!!!\n");
+            // for some reason this always occurs if in the last move a piece was taken.
+            printf("illegal: %u\n", i);
+            printf("notation: %s\n", notation);
+            exit(1);
             break;
         };
 
@@ -54,7 +66,7 @@ CompactGame compact_game(const Game *game) {
     close_game(&test_game);
 
     for (U16 i = 0; i < compact.len; i++) {
-        printf("%d, ", compact.moves[i]);
+        printf("[%d] ", compact.moves[i]);
     }
     printf("\n");
     exit(0);
@@ -68,8 +80,9 @@ U0 write_compactgame_to_file(CompactGame *compact) {
 
 U8 stockfih(const Game *game, U0 *args) {
 
-    if (game->amount_of_moves > 30) {
+    if (game->amount_of_moves > 20) {
         CompactGame compact = compact_game(game);
+        free(compact.moves);
     }
 
     return 0;
