@@ -139,10 +139,12 @@ int main(int argc, char *argv[]) {
                     printf("\033[3F");
                 }
                 U8 max_name_len = 4;
-                U8 name_lens[] = {
-                    strlen(selected_players[0].name),
-                    strlen(selected_players[1].name)
-                };
+                U8 name_lens[2];
+                for (U8 p = 0; p < 2; p++) {
+                    name_lens[p] = strlen(
+                        same ? color_names[p] : selected_players[p].name
+                    );
+                }
                 if (name_lens[0] > max_name_len) max_name_len = name_lens[0];
                 if (name_lens[1] > max_name_len) max_name_len = name_lens[1];
                 printf("draw: ");
