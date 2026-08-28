@@ -118,6 +118,12 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    if (count_selected == 1) {
+        U8 p1_color = rand() % 2;
+        selected_players[p1_color] = selected_players[0];
+        selected_players[1 - p1_color] = players[0];
+        count_selected++;
+    }
     if (count_selected == 2) {
         bool playing_human = (
             selected_players[0].function == human ||
