@@ -50,6 +50,8 @@ static char *notation_line(const Game *game, U16 line_y) {
 
 static struct termios original_terminal;
 
+U8 old_size = 0;
+
 static U8 draw_game_full(
     const Game *game,
     P cursor, bool show_cursor,
@@ -57,7 +59,8 @@ static U8 draw_game_full(
     U8 promotion_cursor, bool show_promotion_menu,
     bool testing
 ) {
-    const U8 size = testing ? 0 : SIZE * 2 + 4;
+    U8 size = old_size;
+    old_size = testing ? 0 : SIZE * 2 + 4 + show_promotion_menu;
     if (size > 0) printf("\033[%dF", size);
     printf("\n\033[90m┌");
     for (U8 x = 0; x < SIZE - 1; x++) printf("───┬");
@@ -142,6 +145,7 @@ static U8 draw_game_full(
                 is_cursor ? color : ""
             );
         }
+        printf("\n");
     } else {
         printf("             \033[1F\n");
     }
