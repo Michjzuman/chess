@@ -114,7 +114,10 @@ int main(int argc, char *argv[]) {
                         break;
                     }
                 }
-                if (!found) return 1;
+                if (!found) {
+                    help();
+                    return 1;
+                }
             }
         }
     }
