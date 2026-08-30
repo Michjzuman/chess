@@ -270,7 +270,7 @@ NN new_chess_nn() {
                 nn.layers[i1 - 1].conf.amount_of_neurons
             );
             nn.layers[i1].neurons[i2] = (Neuron){
-                .bias = rand_float(-5.0f, 5.0f),
+                .bias = rand_float(-1.0f, 1.0f),
                 .weights = malloc(prev_layer * sizeof(float))
             };
             if (nn.layers[i1].neurons[i2].weights == NULL) out_of_mem();
