@@ -49,11 +49,11 @@ struct Bot {
     PF function;
 };
 
-static const struct Bot bots[] = {
+static const struct Bot bots[] = {/*
     {"jonkler", jonkler},
     {"thief", thief},
     {"murderer", murderer}
-};
+*/};
 const U8 amount_of_bots = sizeof(bots) / sizeof(struct Bot);
 
 static char *get_path(char *name) {
