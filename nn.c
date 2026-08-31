@@ -252,6 +252,8 @@ NN new_chess_nn() {
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
     if (nn.layers == NULL) out_of_mem();
+    float bias_range = rand_float(0.0f, 5.0f);
+    float weight_range = rand_float(0.0f, 5.0f);
     for (U32 i1 = 0; i1 < nn.amount_of_layers; i1++) {
         nn.layers[i1].conf = (LayerConf){
             .activation = rand() % 4,
@@ -270,12 +272,12 @@ NN new_chess_nn() {
                 nn.layers[i1 - 1].conf.amount_of_neurons
             );
             nn.layers[i1].neurons[i2] = (Neuron){
-                .bias = rand_float(-1.0f, 1.0f),
+                .bias = rand_float(-bias_range, bias_range),
                 .weights = malloc(prev_layer * sizeof(float))
             };
             if (nn.layers[i1].neurons[i2].weights == NULL) out_of_mem();
             for (U32 i3 = 0; i3 < prev_layer; i3++) {
-                nn.layers[i1].neurons[i2].weights[i3] = rand_float(-5.0f, 5.0f);
+                nn.layers[i1].neurons[i2].weights[i3] = rand_float(-weight_range, weight_range);
             }
         }
     }
