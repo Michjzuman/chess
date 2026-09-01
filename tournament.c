@@ -6,7 +6,6 @@
 #include "chess.h"
 #include "bots.h"
 #include "nn.h"
-#include "tui.h"
 
 #define max_name_len 9
 #define max_path_len 21
@@ -31,6 +30,7 @@ typedef struct {
     TypeTPlayerArg arg;
     atomic_U8 in_use;
     U32 id;
+    bool senior;
 } TPlayer;
 
 typedef struct {
@@ -126,7 +126,7 @@ static U32 open_tplayers(Tournament *t) {
         char *path = get_path(name);
         printf("- \033[32m%s\033[0m found in %s\n", name, path);
         TPlayer player = {
-            .type = NN_TPlayer, .id = get_id()
+            .type = NN_TPlayer, .id = get_id(), .senior = false
         };
         strcpy(player.name, name);
         if (t->amount_of_players <= count + amount_of_bots) {
@@ -180,6 +180,7 @@ static U0 give_birth(Tournament *t, U8 start) {
         strcpy(heap_name, t->players[i].name);
         t->players[i].type = NN_TPlayer;
         t->players[i].id = get_id();
+        t->players[i].senior = false;
         pthread_create(&threads[used_threads], NULL, birth, heap_name);
         players_threads_i[used_threads] = i;
         used_threads++;
@@ -208,7 +209,7 @@ static U0 initial_birth(Tournament *t) {
     for (U8 i = 0; i < amount_of_bots; i++) {
         t->players[i] = (TPlayer){
             .arg.bot =  bots[i].function,
-            .type = Bot_TPlayer, .id = get_id()
+            .type = Bot_TPlayer, .id = get_id(), .senior = false
         };
         strcpy(t->players[i].name, bots[i].name);
     }
@@ -223,13 +224,19 @@ U0 *simulate_game(U0 *simargs) {
     uintptr_t winner;
 
     bool memorized = false;
-    for (U32 i = 0; i < game_memory.amount_of_memorized_games; i++) {
-        if (
-            game->t->players[game->p[0]].id == game_memory.memorized_games[i].id[0] &&
-            game->t->players[game->p[1]].id == game_memory.memorized_games[i].id[1]
-        ) {
-            memorized = true;
-            winner = game_memory.memorized_games[i].result;
+    if (
+        game->t->players[game->p[0]].senior &&
+        game->t->players[game->p[0]].senior
+    ) {
+        for (U32 i = 0; i < game_memory.amount_of_memorized_games; i++) {
+            MemorizedGame *memorized_game = &game_memory.memorized_games[i];
+            if (
+                game->t->players[game->p[0]].id == memorized_game->id[0] &&
+                game->t->players[game->p[1]].id == memorized_game->id[1]
+            ) {
+                memorized = true;
+                winner = memorized_game->result;
+            }
         }
     }
     if (!memorized) {
@@ -367,6 +374,7 @@ static U0 play_round(Tournament *t) {
     GameMemory next_game_memory;
     next_game_memory.amount_of_memorized_games = total_games;
     next_game_memory.memorized_games = malloc(total_games * sizeof(MemorizedGame));
+    if (next_game_memory.memorized_games == NULL) out_of_mem();
     RunningGame all_games[total_games];
 
     {
@@ -417,6 +425,7 @@ static U0 sort_players(Tournament *t) {
         sizeof(TPlayer), compare_tplayers
     );
     for (U8 i = 0; i < survivors && i < t->amount_of_players; i++) {
+        t->players[i].senior = true;
         printf(
             "%d. \033[32m%s\033[0m (%d)\n", i + 1,
             t->players[i].name, t->players[i].points
@@ -474,6 +483,7 @@ static U0 repopulation(Tournament *t) {
                 NN *child_nn = mutate_nn(parent_nn);
                 save_nn(child_nn, child_nn_path);
                 free(child_nn_path);
+                close_nn(child_nn);
                 t->players[current_amount_of_players] = child;
                 printf(
                     "%d/%d: \033[32m%s\033[0m SON of \033[32m%s\033[0m was \033[36mborn\033[0m!\n",

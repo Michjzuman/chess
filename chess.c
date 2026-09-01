@@ -289,7 +289,7 @@ Game copy_game(const Game *source) {
     memcpy(copy.legal_moves, source->legal_moves, copy.amount_of_legal_moves * sizeof(Move));
 
     for (U8 y = 0; y < SIZE; y++) {
-        for (U8 x = 0; x < SIZE; x++) {
+        for (U8 x = 0; x < SIZE / 2; x++) {
             copy.board[y][x] = source->board[y][x];
         }
     }

@@ -48,10 +48,12 @@ U8 codex(const Game *game, U0 *model) {
         answer[strlen(answer) - 1] = '\0';
         for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
             if (strcmp(answer, game->legal_moves[i].notation) == 0) {
+                pclose(pipe);
                 return i;
             }
         }
     }
+    pclose(pipe);
     fprintf(stderr, "illegal move by codex. prompt: [%s] answer: [%s]\n", command, answer);
     return codex(game, model);
 }
@@ -105,11 +107,13 @@ U8 ollama(const Game *game, U0 *model) {
         answer[strlen(answer) - 1] = '\0';
         for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
             if (strcmp(answer, game->legal_moves[i].notation) == 0) {
+                pclose(pipe);
                 return i;
             }
         }
     }
     //fprintf(stderr, "illegal move by ollama. prompt: [%s] answer: [%s]\n", command, answer);
+    pclose(pipe);
     return ollama(game, model);
 }
 

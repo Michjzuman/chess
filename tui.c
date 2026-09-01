@@ -267,6 +267,7 @@ U8 human(const Game *game, U0 *args) {
                 }
                 if (!just_set_promotion_menu && legal) {
                     start_cursor[game->turn] = main_mark;
+                    if (marks != NULL) free(marks);
                     return move;
                 }
             } else if (
