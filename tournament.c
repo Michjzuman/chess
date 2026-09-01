@@ -11,6 +11,9 @@
 #define max_name_len 9
 #define max_path_len 21
 #define survivors 7
+#define AMOUNT_OF_PLAYERS 32
+
+const char *dirpath = "./brains";
 
 typedef atomic_int_least8_t atomic_U8;
 
@@ -27,6 +30,7 @@ typedef struct {
     U8 type;
     TypeTPlayerArg arg;
     atomic_U8 in_use;
+    U32 id;
 } TPlayer;
 
 typedef struct {
@@ -56,12 +60,29 @@ static const struct Bot bots[] = {/*
 */};
 const U8 amount_of_bots = sizeof(bots) / sizeof(struct Bot);
 
+typedef struct {
+    U32 id[2];
+    U8 result;
+} MemorizedGame;
+
+typedef struct {
+    U32 amount_of_memorized_games;
+    MemorizedGame *memorized_games;
+} GameMemory;
+
+GameMemory game_memory;
+
+static U32 get_id() {
+    static U32 next_id = 0;
+    return next_id++;
+}
+
 static char *get_path(char *name) {
     char *path = malloc(max_path_len * sizeof(char));
     if (path == NULL) out_of_mem();
     snprintf(
         path, max_path_len,
-        "./brains/%s.nn", name
+        "%s/%s.nn", dirpath, name
     );
     return path;
 }
@@ -84,7 +105,6 @@ static U0 rand_name(char *name) {
 static U32 open_tplayers(Tournament *t) {
     t->amount_of_players = t->target_amount_of_players;
 
-    char *dirpath = "./brains";
     DIR *dir = opendir(dirpath);
     if (dir == NULL) {
         fprintf(stderr, "path %s could not be opened\n", dirpath);
@@ -106,7 +126,7 @@ static U32 open_tplayers(Tournament *t) {
         char *path = get_path(name);
         printf("- \033[32m%s\033[0m found in %s\n", name, path);
         TPlayer player = {
-            .type = NN_TPlayer
+            .type = NN_TPlayer, .id = get_id()
         };
         strcpy(player.name, name);
         if (t->amount_of_players <= count + amount_of_bots) {
@@ -159,6 +179,7 @@ static U0 give_birth(Tournament *t, U8 start) {
         if (heap_name == NULL) out_of_mem();
         strcpy(heap_name, t->players[i].name);
         t->players[i].type = NN_TPlayer;
+        t->players[i].id = get_id();
         pthread_create(&threads[used_threads], NULL, birth, heap_name);
         players_threads_i[used_threads] = i;
         used_threads++;
@@ -187,35 +208,51 @@ static U0 initial_birth(Tournament *t) {
     for (U8 i = 0; i < amount_of_bots; i++) {
         t->players[i] = (TPlayer){
             .arg.bot =  bots[i].function,
-            .type = Bot_TPlayer
+            .type = Bot_TPlayer, .id = get_id()
         };
         strcpy(t->players[i].name, bots[i].name);
     }
     const U32 existing_players = amount_of_bots + open_tplayers(t);
     give_birth(t, existing_players);
+    game_memory.amount_of_memorized_games = 0;
+    game_memory.memorized_games = malloc(0);
 }
 
 U0 *simulate_game(U0 *simargs) {
     RunningGame *game = simargs;
-    //printf("----- [start] ---------------------------\n");
-    struct {PF function; U0 *args;} pfs[2];
+    uintptr_t winner;
 
-    for (U8 i = 0; i < 2; i++) {
-        TPlayer *player = &game->t->players[game->p[i]];
-        if (player->type == NN_TPlayer) {
-            pfs[i].function = neural_network;
-            pfs[i].args = player->arg.nn;
-        } else {
-            pfs[i].function = player->arg.bot;
-            pfs[i].args = NULL;
+    bool memorized = false;
+    for (U32 i = 0; i < game_memory.amount_of_memorized_games; i++) {
+        if (
+            game->t->players[game->p[0]].id == game_memory.memorized_games[i].id[0] &&
+            game->t->players[game->p[1]].id == game_memory.memorized_games[i].id[1]
+        ) {
+            memorized = true;
+            winner = game_memory.memorized_games[i].result;
         }
     }
-
-    uintptr_t winner = play(bg,
-        pfs[0].function, pfs[0].args,
-        pfs[1].function, pfs[1].args
-    );
-    //printf("----- [end] ---------------------------\n");
+    if (!memorized) {
+        //printf("----- [start] ---------------------------\n");
+        struct {PF function; U0 *args;} pfs[2];
+    
+        for (U8 i = 0; i < 2; i++) {
+            TPlayer *player = &game->t->players[game->p[i]];
+            if (player->type == NN_TPlayer) {
+                pfs[i].function = neural_network;
+                pfs[i].args = player->arg.nn;
+            } else {
+                pfs[i].function = player->arg.bot;
+                pfs[i].args = NULL;
+            }
+        }
+    
+        winner = play(bg,
+            pfs[0].function, pfs[0].args,
+            pfs[1].function, pfs[1].args
+        );
+        //printf("----- [end] ---------------------------\n");
+    }
 
     for (U8 i = 0; i < 2; i++) {
         TPlayer *player = &game->t->players[game->p[i]];
@@ -260,7 +297,7 @@ static U0 start_simulation(RunningGame *game) {
 
 static U0 end_simulation(
     Tournament *t, RunningGame *all_games, U32 total_games,
-    U32 total_game_count, U32 next_game
+    U32 total_game_count, U32 next_game, GameMemory *next_game_memory
 ) {
     bool found = false;
     while (!found) {
@@ -268,19 +305,29 @@ static U0 end_simulation(
             if (atomic_load(&all_games[i2].done)) {
                 uintptr_t winner;
                 pthread_join(all_games[i2].thread, (U0 *)&winner);
+
+                TPlayer *players[2];
+                players[0] = &t->players[all_games[i2].p[0]];
+                players[1] = &t->players[all_games[i2].p[1]];
+
+                MemorizedGame *memorized_game = &next_game_memory->memorized_games[total_game_count];
+                memorized_game->result = winner;
+                memorized_game->id[0] = players[0]->id;
+                memorized_game->id[1] = players[1]->id;
+                
                 total_game_count++;
                 printf(
                     "%d/%d: \033[%sm%s\033[0m vs. \033[%sm%s\033[0m -> ",
                     total_game_count, total_games,
-                    t->players[all_games[i2].p[0]].type == Bot_TPlayer ? "92" : "32",
-                    t->players[all_games[i2].p[0]].name,
-                    t->players[all_games[i2].p[1]].type == Bot_TPlayer ? "92" : "32",
-                    t->players[all_games[i2].p[1]].name
+                    players[0]->type == Bot_TPlayer ? "92" : "32",
+                    players[0]->name,
+                    players[1]->type == Bot_TPlayer ? "92" : "32",
+                    players[1]->name
                 );
                 if (winner == 0) {
                     printf("\033[90mdraw\033[0m");
-                    t->players[all_games[i2].p[0]].points++;
-                    t->players[all_games[i2].p[1]].points++;
+                    players[0]->points++;
+                    players[1]->points++;
                 } else {
                     printf(
                         "\033[33mwinner\033[0m: \033[%sm%s\033[0m",
@@ -317,6 +364,9 @@ static U0 play_round(Tournament *t) {
         atomic_store(&t->players[i].in_use, 0);
     }
     
+    GameMemory next_game_memory;
+    next_game_memory.amount_of_memorized_games = total_games;
+    next_game_memory.memorized_games = malloc(total_games * sizeof(MemorizedGame));
     RunningGame all_games[total_games];
 
     {
@@ -324,7 +374,7 @@ static U0 play_round(Tournament *t) {
         for (U8 i1 = 0; i1 < t->amount_of_players; i1++) {
             for (U8 i2 = i1 + 1; i2 < t->amount_of_players; i2++) {
                 for (U8 color = 0; color < 2; color++) {
-                    RunningGame game = (RunningGame){.t = t};
+                    RunningGame game; game.t = t;
                     game.p[0] = color == 0 ? i1 : i2;
                     game.p[1] = color == 0 ? i2 : i1;
                     atomic_store(&game.done, false);
@@ -340,15 +390,18 @@ static U0 play_round(Tournament *t) {
     }
     U32 next_game = t->amount_of_threads; 
     while (next_game < total_games) {
-        end_simulation(t, all_games, total_games, total_game_count, next_game);
+        end_simulation(t, all_games, total_games, total_game_count, next_game, &next_game_memory);
         start_simulation(&all_games[next_game]);
         next_game++;
         total_game_count++;
     }
     for (U8 i = 0; i < t->amount_of_threads && i < total_games; i++) {
-        end_simulation(t, all_games, total_games, total_game_count, total_games);
+        end_simulation(t, all_games, total_games, total_game_count, total_games, &next_game_memory);
         total_game_count++;
     }
+
+    free(game_memory.memorized_games);
+    game_memory = next_game_memory;
 }
 
 static int compare_tplayers(const U0 *a, const U0 *b) {
@@ -440,28 +493,23 @@ static U0 repopulation(Tournament *t) {
 
 U0 tournament(U8 amount_of_threads) {
     srand(time(NULL));
-
-    const U8 amount_of_players = 32;
     
-    Tournament t = {
-        .amount_of_threads = amount_of_threads,
-        .target_amount_of_players = amount_of_players,
-        .round_count = 0
-    };
+    Tournament t;
+    t.amount_of_threads = amount_of_threads;
+    t.target_amount_of_players = AMOUNT_OF_PLAYERS;
+    t.round_count = 0;
 
     initial_birth(&t);
     
     while (true) {
         play_round(&t);
-
         sort_players(&t);
-
         elimination(&t);
-        
         repopulation(&t);
     }
     
     title("end");
     free(t.players);
+    free(game_memory.memorized_games);
 }
 
