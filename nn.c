@@ -55,6 +55,7 @@ U0 close_nn(NN *nn) {
 
 NN *copy_nn(const NN *source) {
     NN *copy = malloc(sizeof(NN));
+    if (copy == NULL) out_of_mem();
     *copy = (NN){
         .amount_of_inputs = source->amount_of_inputs,
         .amount_of_layers = source->amount_of_layers,
@@ -96,7 +97,7 @@ NN *copy_nn(const NN *source) {
 
 NN *mutate_nn(const NN *source) {
     NN *mutation = copy_nn(source);
-    for (U8 i = 0; i < (U8)rand() % 100 + 1; i++) {
+    for (U8 i = 0; i < (U8)rand(); i++) {
         U32 layer = (U32)rand() % mutation->amount_of_layers;
         U32 amount_of_neurons = (
             mutation->layers[layer].conf.amount_of_neurons
@@ -109,8 +110,7 @@ NN *mutate_nn(const NN *source) {
         } else {
             U32 weight = (
                 (U32)rand() % (
-                    i == 0 ? mutation->amount_of_inputs :
-                    mutation->layers[layer].conf.amount_of_neurons
+                    mutation->layers[layer - 1].conf.amount_of_neurons
                 )
             );
             mutation->layers[layer].neurons[neuron].weights[weight] *= (

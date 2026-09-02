@@ -226,7 +226,7 @@ U0 *simulate_game(U0 *simargs) {
     bool memorized = false;
     if (
         game->t->players[game->p[0]].senior &&
-        game->t->players[game->p[0]].senior
+        game->t->players[game->p[1]].senior
     ) {
         for (U32 i = 0; i < game_memory.amount_of_memorized_games; i++) {
             MemorizedGame *memorized_game = &game_memory.memorized_games[i];
@@ -433,12 +433,12 @@ static U0 sort_players(Tournament *t) {
             "%d. \033[32m%s\033[0m (%d)\n", i + 1,
             t->players[i].name, t->players[i].points
         );
-        fprintf(
+        if (file != NULL) fprintf(
             file, "%d. %s (%d)\n", i + 1,
             t->players[i].name, t->players[i].points
         );
     }
-    fclose(file);
+    if (file != NULL) fclose(file);
 }
 
 static U0 elimination(Tournament *t) {
@@ -512,6 +512,7 @@ static U0 repopulation(Tournament *t) {
 }
 
 U0 tournament(U8 amount_of_threads) {
+    if (amount_of_threads == 0) return;
     srand(time(NULL));
     
     Tournament t;
