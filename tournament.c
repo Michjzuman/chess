@@ -424,13 +424,21 @@ static U0 sort_players(Tournament *t) {
         t->players, t->amount_of_players,
         sizeof(TPlayer), compare_tplayers
     );
+    char path[max_path_len];
+    snprintf(path, max_path_len, "%s/ranking.txt", dirpath);
+    FILE *file = fopen(path, "w");
     for (U8 i = 0; i < survivors && i < t->amount_of_players; i++) {
         t->players[i].senior = true;
         printf(
             "%d. \033[32m%s\033[0m (%d)\n", i + 1,
             t->players[i].name, t->players[i].points
         );
+        fprintf(
+            file, "%d. %s (%d)\n", i + 1,
+            t->players[i].name, t->players[i].points
+        );
     }
+    fclose(file);
 }
 
 static U0 elimination(Tournament *t) {
