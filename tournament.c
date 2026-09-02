@@ -486,6 +486,7 @@ static U0 repopulation(Tournament *t) {
                 save_nn(child_nn, child_nn_path);
                 t->players[current_amount_of_players] = child;
                 free(child_nn_path);
+                //close_nn(child_nn); -> segfault
                 printf(
                     "%d/%d: \033[32m%s\033[0m SON of \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
                     i2 + 1, i,

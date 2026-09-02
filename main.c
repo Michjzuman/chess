@@ -22,8 +22,7 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    {"stockfih", stockfih, NULL, "a smart and predicting chess bot"
-    },
+    //{"stockfih", stockfih, NULL, "a smart and predicting chess bot"},
     {"gpt-5.5", codex, "gpt-5.5",
         "requires codex cli to be installed an set up"
     },
