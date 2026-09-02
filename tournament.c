@@ -464,13 +464,16 @@ static U0 repopulation(Tournament *t) {
     U32 current_amount_of_players = survivors;
     for (U8 i = 0; i < survivors; i++) {
         if (t->players[i].type == NN_TPlayer) {
+        printf("--- a\n");
             char *parent_nn_path = get_path(t->players[i].name);
             NN *parent_nn = open_nn(parent_nn_path);
+        printf("--- b\n");
             for (U8 i2 = 0; i2 < i; i2++) {
                 TPlayer child;
                 child.type = NN_TPlayer;
                 child.id = get_id();
                 child.senior = false;
+        printf("--- c\n");
                 bool found = false;
                 while (!found) {
                     rand_name(child.name);
@@ -481,12 +484,15 @@ static U0 repopulation(Tournament *t) {
                         }
                     }
                 }
+        printf("--- d\n");
                 char *child_nn_path = get_path(child.name);
                 NN *child_nn = mutate_nn(parent_nn);
                 save_nn(child_nn, child_nn_path);
+        printf("--- e\n");
                 t->players[current_amount_of_players] = child;
                 free(child_nn_path);
                 close_nn(child_nn);
+        printf("--- f\n");
                 printf(
                     "%d/%d: \033[32m%s\033[0m SON of \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
                     i2 + 1, i,
@@ -499,7 +505,9 @@ static U0 repopulation(Tournament *t) {
             close_nn(parent_nn);
         }
     }
+        printf("--- g\n");
     give_birth(t, current_amount_of_players);
+        printf("--- h\n");
     t->amount_of_players = t->target_amount_of_players;
 }
 
