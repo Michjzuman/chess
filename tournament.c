@@ -484,13 +484,8 @@ static U0 repopulation(Tournament *t) {
                 char *child_nn_path = get_path(child.name);
                 NN *child_nn = mutate_nn(parent_nn);
                 save_nn(child_nn, child_nn_path);
-        printf("--- a\n");
                 t->players[current_amount_of_players] = child;
-        printf("--- b\n");
                 free(child_nn_path);
-        printf("--- c\n");
-                close_nn(child_nn);
-        printf("--- d\n");
                 printf(
                     "%d/%d: \033[32m%s\033[0m SON of \033[32m%s\033[0m was \033[36mborn\033[0m!\n",
                     i2 + 1, i,
