@@ -110,6 +110,7 @@ NN *mutate_nn(const NN *source) {
         } else {
             U32 weight = (
                 (U32)rand() % (
+                    layer == 0 ? mutation->amount_of_inputs :
                     mutation->layers[layer - 1].conf.amount_of_neurons
                 )
             );
