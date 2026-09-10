@@ -8,21 +8,17 @@ This is a chess engine written in C for fun
 
 Requirements:
 ```bash
-brew install llvm clang git
+llvm clang git make
 ```
 
-Download:
+Download & Compile:
 ```bash
 git clone https://github.com/michjzuman/chess
 cd chess
-```
-
-Compile:
-```bash
-clang *.c -o /usr/bin/chess
+make
 ```
 
 Run:
 ```bash
-chess
+./chess
 ```
