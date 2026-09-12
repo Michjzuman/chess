@@ -1,2 +1,2 @@
-chess: *.c
-	clang *.c -o chess
+chess: src/*.*
+	clang src/*.c -o chess
