@@ -22,7 +22,6 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    //{"stockfih", stockfih, NULL, "a smart and predicting chess bot"},
     {"gpt-5.5", codex, "gpt-5.5",
         "requires codex cli to be installed an set up"
     },
@@ -103,7 +102,7 @@ int main(int argc, char *argv[]) {
                 selected_players[count_selected].function = neural_network;
                 selected_players[count_selected].args = nn;
                 count_selected++;
-            } else {
+            } else if (count_selected < 2) {
                 bool found = false;
                 for (U16 p = 0; p < amount_of_players; p++) {
                     if (strcmp(argv[i], players[p].name) == 0) {
@@ -117,6 +116,9 @@ int main(int argc, char *argv[]) {
                     help();
                     return 1;
                 }
+            } else {
+                help();
+                return 1;
             }
         }
     }
