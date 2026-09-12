@@ -35,15 +35,15 @@ static char *notation_line(const Game *game, U16 line_y) {
             max_notation_len = strlen(result);
         }
         U8 spaces_len = max_notation_len - strlen(result);
-        char *spaces = malloc(spaces_len);
-        if (spaces == NULL) out_of_mem();
-        for (U8 i = 0; i < spaces_len; i++) spaces[i] = ' ';
-        snprintf(
-            result, 32, "%s%s", result, spaces
-        );
-        return result;
+        char *padded_result = malloc(32);
+        if (padded_result == NULL) out_of_mem();
+        snprintf(padded_result, 32, "%s%*s", result, spaces_len, "");
+        free(result);
+        return padded_result;
     } else {
-        char *result = malloc(0);
+        char *result = malloc(1);
+        if (result == NULL) out_of_mem();
+        result[0] = '\0';
         return result;
     }
 }
@@ -241,13 +241,16 @@ U8 human(const Game *game, U0 *args) {
                         game->legal_moves[i].start.y == cursor.y &&
                         game->legal_moves[i].end.x == main_mark.x &&
                         game->legal_moves[i].end.y == main_mark.y && (
-                            (
+                            !promotion_menu || (
+                                notation_len >= 2 && (
                                 notation[notation_len - 2] == '=' &&
                                 notation[notation_len - 1] == piece_letters[promotion_cursor + 2]
                             ) || (
+                                notation_len >= 3 &&
                                 notation[notation_len - 3] == '=' &&
                                 notation[notation_len - 2] == piece_letters[promotion_cursor + 2]
-                            ) || !promotion_menu
+                            )
+                        )
                         )
                     ) {
                         move = i;
@@ -283,7 +286,9 @@ U8 human(const Game *game, U0 *args) {
                     ) {
                         if (amount_of_marks == 0) move = i;
                         amount_of_marks++;
-                        marks = realloc(marks, amount_of_marks * sizeof(P));
+                        P *new_marks = realloc(marks, amount_of_marks * sizeof(P));
+                        if (new_marks == NULL) out_of_mem();
+                        marks = new_marks;
                         marks[amount_of_marks - 1] = game->legal_moves[i].end;
                     }
                 }
