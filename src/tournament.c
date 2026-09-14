@@ -120,6 +120,7 @@ static U32 open_tplayers(Tournament *t) {
         if (
             strcmp(name, ".") == 0 ||
             strcmp(name, "..") == 0 ||
+            strlen(name) < 3 ||
             strcmp(name + strlen(name) - 3, ".nn") != 0
         ) continue;
         name[strlen(name) - 3] = '\0';

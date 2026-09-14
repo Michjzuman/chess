@@ -79,7 +79,7 @@ typedef struct {
 
     Move *legal_moves;
     U8 amount_of_legal_moves;
-    U8 legal_moves_capacity: 3;
+    U8 legal_moves_capacity: 4;
     
     bool moved_king_w: 1;
     bool moved_rook_r_w: 1;
@@ -92,7 +92,7 @@ typedef struct {
     bool king_can_go_left: 1;
     bool king_can_go_right: 1;
 
-    U8 moves_without_pawn_moves_or_takes: 6;
+    U8 moves_without_pawn_moves_or_takes: 7;
 
     U8 en_passant_line_plus1: 4;
     

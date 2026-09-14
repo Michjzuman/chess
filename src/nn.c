@@ -31,6 +31,7 @@ static U32 amount_of_outputs(const NN *nn) {
 }
 
 U0 close_nn(NN *nn) {
+    if (nn == NULL) return;
     for (U32 i1 = 0; i1 < nn->amount_of_layers; i1++) {
         U32 layer = nn->layers[i1].conf.amount_of_neurons;
         for (U32 i2 = 0; i2 < layer; i2++) {
@@ -169,10 +170,12 @@ U0 save_nn(const NN *nn, char *path) {
 
 NN *open_nn(char *path) {
     NN *nn = malloc(sizeof(NN));
+    if (nn == NULL) out_of_mem();
     FILE *file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "file %s could not be opened\n", path);
-        return nn;
+        free(nn);
+        return NULL;
     }
     if (
         fread(&nn->amount_of_inputs, sizeof(U32), 1, file) != 1 ||
@@ -180,16 +183,39 @@ NN *open_nn(char *path) {
     ) {
         fprintf(stderr, "file could not be read\n");
         fclose(file);
-        exit(1);
+        free(nn);
+        return NULL;
+    }
+    if (
+        nn->amount_of_inputs == 0 || nn->amount_of_layers == 0 ||
+        nn->amount_of_layers > 64
+    ) {
+        fprintf(stderr, "invalid neural network dimensions\n");
+        fclose(file);
+        free(nn);
+        return NULL;
     }
     nn->layers = malloc(nn->amount_of_layers * sizeof(Layer));
     if (nn->layers == NULL) out_of_mem();
     for (U32 i = 0; i < nn->amount_of_layers; i++) {
         if (fread(&nn->layers[i].conf, sizeof(LayerConf), 1, file) != 1) {
-            fprintf(stderr, "file could not be written (layer conf)\n");
+            fprintf(stderr, "file could not be read (layer conf)\n");
             fclose(file);
-            exit(1);
+            free(nn->layers);
+            free(nn);
+            return NULL;
         };
+        if (
+            nn->layers[i].conf.amount_of_neurons == 0 ||
+            nn->layers[i].conf.amount_of_neurons > 4096 ||
+            nn->layers[i].conf.activation >= 4
+        ) {
+            fprintf(stderr, "invalid neural network layer\n");
+            fclose(file);
+            free(nn->layers);
+            free(nn);
+            return NULL;
+        }
     }
     for (U32 i1 = 0; i1 < nn->amount_of_layers; i1++) {
         U32 prev_layer = (
@@ -249,7 +275,7 @@ float *ask_nn(const NN *nn, float *inputs) {
 NN new_chess_nn() {
     NN nn = {
         .amount_of_inputs = 664,
-        .amount_of_layers = (U32)rand() % 1000 + 1,
+        .amount_of_layers = (U32)rand() % 8 + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
     if (nn.layers == NULL) out_of_mem();
@@ -260,7 +286,7 @@ NN new_chess_nn() {
             .activation = rand() % 4,
             .amount_of_neurons = (
                 i1 == nn.amount_of_layers - 1 ?
-                132 : (U32)rand() % 1000 + 132
+                132 : (U32)rand() % 125 + 132
             )
         };
         nn.layers[i1].neurons = malloc(
@@ -313,11 +339,11 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
             ) ? 1.0f : 0.0f;
             index++;
             inputs[index] = (
-                me == 0 ? game->moved_rook_r_w : game->moved_king_b
+                me == 0 ? game->moved_rook_r_w : game->moved_rook_r_b
             ) ? 1.0f : 0.0f;
             index++;
             inputs[index] = (
-                me == 0 ? game->moved_rook_l_w : game->moved_king_b
+                me == 0 ? game->moved_rook_l_w : game->moved_rook_l_b
             ) ? 1.0f : 0.0f;
             index++;
             for (U8 x = 0; x < SIZE; x++) {
@@ -362,15 +388,15 @@ U8 ask_chess_nn(const Game *game, const NN *nn) {
                                     U8 promotion_piece = 0;
                                     bool right_promotion_piece = false;
                                     if (promotion) {
-                                        float max;
-                                        for (U8 piece = 0; piece < 4; piece++) {
+                                        float max = answer[SIZE * SIZE * 2];
+                                        promotion_piece = 2;
+                                        for (U8 piece = 1; piece < 4; piece++) {
                                             float value = (
                                                 answer[SIZE * SIZE * 2 + piece]
                                             );
-                                            if (piece == 0 || value > max) {
+                                            if (value > max) {
                                                 max = value;
                                                 promotion_piece = piece + 2;
-                                                break;
                                             }
                                         }
                                         char *notation = game->legal_moves[i].notation;

@@ -2,7 +2,7 @@
 
 ALL = src/*.*
 SRC = src/*.c
-FLAGS = -I src -lm
+FLAGS = -I src -lm -pthread
 
 all: chess
 

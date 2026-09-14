@@ -113,16 +113,19 @@ int main(int argc, char *argv[]) {
             } else if (strcmp(argv[i], "--benchmark") == 0) {
                 run_in_bg = true;
                 benchmark = true;
-            } else if (strcmp(argv[i] + arg_len - 3, ".nn") == 0) {
+            } else if (
+                count_selected < 2 && arg_len >= 3 &&
+                strcmp(argv[i] + arg_len - 3, ".nn") == 0
+            ) {
                 NN *nn = open_nn(argv[i]);
-                for (U32 i2 = strlen(argv[i]); i2 > 1; i2--) {
-                    if (argv[i][i2 - 1] == '/') {
-                        selected_players[count_selected].name = argv[i] + i2;
-                        break;
-                    }
+                if (nn == NULL) {
+                    fprintf(stderr, "could not open neural network %s\n", argv[i]);
+                    return 1;
                 }
-                U8 name_len = strlen(selected_players[count_selected].name);
-                //selected_players[count_selected].name[name_len - 3] = '\0';
+                char *slash = strrchr(argv[i], '/');
+                selected_players[count_selected].name = (
+                    slash == NULL ? argv[i] : slash + 1
+                );
                 selected_players[count_selected].function = neural_network;
                 selected_players[count_selected].args = nn;
                 count_selected++;
@@ -231,6 +234,11 @@ int main(int argc, char *argv[]) {
                     (char *[]){"white", "black"}[winner - 1] :
                     selected_players[winner - 1].name
                 );
+            }
+            for (U8 p = 0; p < 2; p++) {
+                if (selected_players[p].function == neural_network) {
+                    close_nn((NN *)selected_players[p].args);
+                }
             }
             return 0;
         }

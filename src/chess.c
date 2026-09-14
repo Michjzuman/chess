@@ -29,6 +29,26 @@ U0 set_xy(Game *game, U8 x, U8 y, Piece new) {
 }
 
 U0 raw_move_minimal(Game *game, Move move) {
+    Piece moving = xy(game, move.start.x, move.start.y);
+    Piece captured = xy(game, move.end.x, move.end.y);
+
+    if (moving.type == KING) {
+        if (moving.color == WHITE) game->moved_king_w = true;
+        else game->moved_king_b = true;
+    } else if (moving.type == ROOK) {
+        if (moving.color == WHITE && move.start.x == 0) game->moved_rook_l_w = true;
+        if (moving.color == WHITE && move.start.x == 7) game->moved_rook_r_w = true;
+        if (moving.color == BLACK && move.start.x == 0) game->moved_rook_l_b = true;
+        if (moving.color == BLACK && move.start.x == 7) game->moved_rook_r_b = true;
+    }
+
+    if (captured.type == ROOK) {
+        if (captured.color == WHITE && move.end.x == 0 && move.end.y == 0) game->moved_rook_l_w = true;
+        if (captured.color == WHITE && move.end.x == 7 && move.end.y == 0) game->moved_rook_r_w = true;
+        if (captured.color == BLACK && move.end.x == 0 && move.end.y == 7) game->moved_rook_l_b = true;
+        if (captured.color == BLACK && move.end.x == 7 && move.end.y == 7) game->moved_rook_r_b = true;
+    }
+
     game->amount_of_moves++;
     U16 capacity = 1;
     for (U8 i = 0; i < game->moves_capacity; i++) capacity *= 2;
@@ -37,6 +57,7 @@ U0 raw_move_minimal(Game *game, Move move) {
         game->moves = realloc(
             game->moves, capacity * 2 * MAX_MOVE_NOTATION_LEN * sizeof(char *)
         );
+        if(game->moves == NULL) out_of_mem();
     }
 
     bool en_passant = (
@@ -219,7 +240,7 @@ U0 is_draw(Game *game) {
         return;
     }
 
-    if (game->moves_without_pawn_moves_or_takes >= 50) {
+    if (game->moves_without_pawn_moves_or_takes >= 100) {
         game->draw = true;
         return;
     }
@@ -231,6 +252,12 @@ U0 is_draw(Game *game) {
     TwoPieces positions[game->amount_of_moves][SIZE][SIZE / 2];
 
     for (U16 i1 = 0; i1 < game->amount_of_moves; i1++) {
+        for (U8 y = 0; y < SIZE; y++) {
+            for (U8 x = 0; x < SIZE / 2; x++) {
+                positions[i1][y][x] = test_game.board[y][x];
+            }
+        }
+
         bool works = false;
         for (U8 i = 0; i < test_game.amount_of_legal_moves; i++) {
             if (strcmp(test_game.legal_moves[i].notation, game->moves[i1]) == 0) {
@@ -250,11 +277,6 @@ U0 is_draw(Game *game) {
         calculate_legal_moves(&test_game);
         is_check(&test_game);
 
-        for (U8 y = 0; y < SIZE; y++) {
-            for (U8 x = 0; x < SIZE / 2; x++) {
-                positions[i1][y][x] = test_game.board[y][x];
-            }
-        }
         U8 count_sames = 0;
         for (U16 i2 = 0; i2 < i1; i2++) {
             bool same = true;
@@ -273,8 +295,32 @@ U0 is_draw(Game *game) {
             if (same) count_sames++;
             if (count_sames >= 2) {
                 game->draw = true;
+                close_game(&test_game);
                 return;
             }
+        }
+    }
+
+    U8 count_sames = 0;
+    for (U16 i = 0; i < game->amount_of_moves; i++) {
+        bool same = true;
+        for (U8 y = 0; y < SIZE; y++) {
+            for (U8 x = 0; x < SIZE / 2; x++) {
+                if (
+                    test_game.board[y][x].left != positions[i][y][x].left ||
+                    test_game.board[y][x].right != positions[i][y][x].right
+                ) {
+                    same = false;
+                    break;
+                }
+            }
+            if (!same) break;
+        }
+        if (same) count_sames++;
+        if (count_sames >= 2) {
+            game->draw = true;
+            close_game(&test_game);
+            return;
         }
     }
     close_game(&test_game);
@@ -283,11 +329,11 @@ U0 is_draw(Game *game) {
 Game copy_game(const Game *source) {
     Game copy = *source;
 
-    copy.moves = malloc(copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
+    copy.moves = malloc((copy.amount_of_moves + 1) * MAX_MOVE_NOTATION_LEN * sizeof(char *));
     if (copy.moves == NULL) out_of_mem();
     memcpy(copy.moves, source->moves, copy.amount_of_moves * MAX_MOVE_NOTATION_LEN * sizeof(char *));
 
-    copy.legal_moves = malloc(copy.amount_of_legal_moves * sizeof(Move));
+    copy.legal_moves = malloc((copy.amount_of_legal_moves + 1) * sizeof(Move));
     if (copy.legal_moves == NULL) out_of_mem();
     memcpy(copy.legal_moves, source->legal_moves, copy.amount_of_legal_moves * sizeof(Move));
 
@@ -349,6 +395,7 @@ U0 add_legal_move(Game *game, Move move) {
                 game->legal_moves = realloc(
                     game->legal_moves, capacity * 2 * sizeof(Move)
                 );
+                if(game->legal_moves == NULL) out_of_mem();
             }
     
             if (move.notation[0] != 'O') {
@@ -633,46 +680,6 @@ U0 calculate_legal_moves(Game *game) {
 }
 
 U0 raw_move(Game *game, Move move) {
-    if (
-        !(
-            game->turn == WHITE ?
-            game->moved_king_w : game->moved_king_b
-        ) &&
-        xy(game, move.start.x, move.start.y).type == KING
-    ) {
-        if (game->turn == WHITE) {
-            game->moved_king_w = true;
-        } else {
-            game->moved_king_b = true;
-        }
-    } else if (
-        !(
-            game->turn == WHITE ?
-            game->moved_rook_l_w : game->moved_rook_l_b
-        ) &&
-        xy(game, move.start.x, move.start.y).type == ROOK &&
-        move.start.x == 0
-    ) {
-        if (game->turn == WHITE) {
-            game->moved_rook_l_w = true;
-        } else {
-            game->moved_rook_l_b = true;
-        }
-    } else if (
-        !(
-            game->turn == WHITE ?
-            game->moved_rook_r_w : game->moved_rook_r_b
-        ) &&
-        xy(game, move.start.x, move.start.y).type == ROOK &&
-        move.start.x == 7
-    ) {
-        if (game->turn == WHITE) {
-            game->moved_rook_r_w = true;
-        } else {
-            game->moved_rook_r_b = true;
-        }
-    }
-
     raw_move_minimal(game, move);
     
     for (U8 i = 0; i < MAX_MOVE_NOTATION_LEN; i++) {
@@ -697,10 +704,7 @@ Game new_game() {
     if (game.moves == NULL) out_of_mem();
     game.amount_of_legal_moves = 0;
     game.legal_moves_capacity = 1;
-    game.legal_moves = malloc(
-        game.legal_moves_capacity * 2 * sizeof(Move)
-    );
-    if (game.legal_moves == NULL) out_of_mem();
+    game.legal_moves = NULL;
     
     game.moved_king_w = false;
     game.moved_rook_r_w = false;

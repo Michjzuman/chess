@@ -100,7 +100,7 @@ Result peak_bot_recursion(
             .count = depth,
             .result = game->turn == WHITE ? 2 : 1
         };
-    } else if (game->draw || (max_depth != 0 && depth > max_depth)) {
+    } else if (game->draw || (max_depth != 0 && depth >= max_depth)) {
         return (Result){.count = depth, .result = 0};
     }
     
