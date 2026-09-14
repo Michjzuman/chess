@@ -112,7 +112,7 @@ Result peak_bot_recursion(
         status->depth = depth;
         status->layers[depth].progress = i;
 
-        if (log) {
+        if (log && game->amount_of_moves > 0) {
             if (verbose) {
                 if (status->count % 1 == 0) {
                     log_status(status);
@@ -164,6 +164,20 @@ Result peak_bot_recursion(
             }
         }
     }
+    if (depth == 0) {
+        FILE *file = fopen("peak_bot_reasoning.log", "w");
+        for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+            fprintf(
+                file, "%u. [%s] %s in %u\n",
+                i, game->legal_moves[i].notation,
+                results[i].result == 0 ? "?" : (
+                    results[i].result == game->turn + 1 ? "winning" : "losing"
+                ),
+                results[i].count
+            );
+        }
+        fclose(file);
+    }
     free(results);
     status->count++;
     return final;
@@ -173,16 +187,4 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
     return peak_bot_recursion(
         game, &(Status){0}, 0, (uintptr_t)max_depth, true, false
     ).move;
-}
-
-U8 hypnotised_peak_bot(const Game *game, U0 *arg) {
-    FILE *file = fopen("hypnotise.log", "rb");
-    char ch;
-    fread(&ch, sizeof(char), 1, file);
-    fclose(file);
-    return (
-        ch == 'y' ?
-        human(game, NULL) :
-        peak_bot_recursion(game, &(Status){0}, 0, 0, true, true).move
-    );
 }
