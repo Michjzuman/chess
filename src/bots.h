@@ -17,7 +17,7 @@ U8 ollama(const Game *, U0 *model);
 
 U8 neural_network(const Game *, U0 *nn);
 
-U8 stockfih(const Game *game, U0 *);
+U8 peak_bot(const Game *, U0 *);
 
 ///////////////////////////
 

@@ -1,10 +1,7 @@
-
-
 .DS_Store
-
-chess
-chess_test
-
-chess.dSYM
-
+*.dSYM
 brains
+chess
+test
+test.c
+*.log

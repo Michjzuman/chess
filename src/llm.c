@@ -1,6 +1,6 @@
 #include "chess.h"
 
-U8 codex(const Game *game, U0 *model) {
+char *get_history(const Game *game) {
     U16 history_len = 0;
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         history_len += strlen(game->moves[i]) + 1;
@@ -15,11 +15,15 @@ U8 codex(const Game *game, U0 *model) {
         history[strlen(game->moves[i]) + index] = ' ';
         index += strlen(game->moves[i]) + 1;
     }
+    return history;
+}
+
+char *get_legal_moves(const Game *game) {
     U16 legal_moves_len = 0;
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         legal_moves_len += strlen(game->legal_moves[i].notation) + 1;
     }
-    index = 0;
+    U8 index = 0;
     char *legal_moves = malloc(legal_moves_len);
     if (legal_moves == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
@@ -29,6 +33,28 @@ U8 codex(const Game *game, U0 *model) {
         legal_moves[strlen(game->legal_moves[i].notation) + index] = ' ';
         index += strlen(game->legal_moves[i].notation) + 1;
     }
+    return legal_moves;
+}
+
+U8 ask_llm(const Game *game, char *command) {
+    FILE *pipe = popen(command, "r");
+    char answer[MAX_MOVE_NOTATION_LEN];
+    if (fgets(answer, sizeof(answer), pipe) != NULL) {
+        answer[strlen(answer) - 1] = '\0';
+        for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+            if (strcmp(answer, game->legal_moves[i].notation) == 0) {
+                pclose(pipe);
+                return i + 1;
+            }
+        }
+    }
+    pclose(pipe);
+    return 0;
+}
+
+U8 codex(const Game *game, U0 *model) {
+    char *history = get_history(game);
+    char *legal_moves = get_legal_moves(game);
     char command[1024];
     snprintf(
         command, sizeof(command),
@@ -42,51 +68,14 @@ U8 codex(const Game *game, U0 *model) {
         history, legal_moves, (char *)model
     );
     free(history); free(legal_moves);
-    FILE *pipe = popen(command, "r");
-    char answer[MAX_MOVE_NOTATION_LEN];
-    if (fgets(answer, sizeof(answer), pipe) != NULL) {
-        answer[strlen(answer) - 1] = '\0';
-        for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-            if (strcmp(answer, game->legal_moves[i].notation) == 0) {
-                pclose(pipe);
-                return i;
-            }
-        }
-    }
-    pclose(pipe);
-    fprintf(stderr, "illegal move by codex. prompt: [%s] answer: [%s]\n", command, answer);
+    U8 move = ask_llm(game, command);
+    if (move > 0) return move - 1;
     return codex(game, model);
 }
 
 U8 ollama(const Game *game, U0 *model) {
-    U16 history_len = 0;
-    for (U8 i = 0; i < game->amount_of_moves; i++) {
-        history_len += strlen(game->moves[i]) + 1;
-    }
-    U8 index = 0;
-    char *history = malloc(history_len);
-    if (history == NULL) out_of_mem();
-    for (U8 i = 0; i < game->amount_of_moves; i++) {
-        for (U8 i2 = 0; i2 < strlen(game->moves[i]); i2++) {
-            history[index + i2] = game->moves[i][i2];
-        }
-        history[strlen(game->moves[i]) + index] = ' ';
-        index += strlen(game->moves[i]) + 1;
-    }
-    U16 legal_moves_len = 0;
-    for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-        legal_moves_len += strlen(game->legal_moves[i].notation) + 1;
-    }
-    index = 0;
-    char *legal_moves = malloc(legal_moves_len);
-    if (legal_moves == NULL) out_of_mem();
-    for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-        for (U8 i2 = 0; i2 < strlen(game->legal_moves[i].notation); i2++) {
-            legal_moves[index + i2] = game->legal_moves[i].notation[i2];
-        }
-        legal_moves[strlen(game->legal_moves[i].notation) + index] = ' ';
-        index += strlen(game->legal_moves[i].notation) + 1;
-    }
+    char *history = get_history(game);
+    char *legal_moves = get_legal_moves(game);
     char command[1024];
     snprintf(
         command, sizeof(command),
@@ -101,21 +90,7 @@ U8 ollama(const Game *game, U0 *model) {
         history, legal_moves
     );
     free(history); free(legal_moves);
-    FILE *pipe = popen(command, "r");
-    char answer[MAX_MOVE_NOTATION_LEN];
-    if (fgets(answer, sizeof(answer), pipe) != NULL) {
-        answer[strlen(answer) - 1] = '\0';
-        for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-            if (strcmp(answer, game->legal_moves[i].notation) == 0) {
-                pclose(pipe);
-                return i;
-            }
-        }
-    }
-    //fprintf(stderr, "illegal move by ollama. prompt: [%s] answer: [%s]\n", command, answer);
-    pclose(pipe);
-    return ollama(game, model);
+    U8 move = ask_llm(game, command);
+    if (move > 0) return move - 1;
+    return codex(game, model);
 }
-
-
-
