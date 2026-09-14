@@ -26,12 +26,36 @@ static const struct Player players[] = {
         "requires codex cli to be installed an set up"
     },
     {"gemma4:e2b", ollama, "gemma4:e2b", "\n"
-        "      requires ollama to be installed and the \n"
+        "      requires ollama to be installed and the\n"
         "      model gemma4:e2b to be downloaded"
     },
     {"gemma4:e2b-mlx", ollama, "gemma4:e2b-mlx", "\n"
-        "      requires ollama to be installed and the \n"
+        "      requires ollama to be installed and the\n"
         "      model gemma4:e2b-mlx to be downloaded"
+    },
+    {"bot1", peak_bot, (U0 *)1, "\n"
+        "      a bot that predicts 1 move and foresees\n"
+        "      wins and losses. if he sees none, he moves randomly"
+    },
+    {"bot2", peak_bot, (U0 *)2, "\n"
+        "      a bot that predicts 2 moves and foresees\n"
+        "      wins and losses. if he sees none, he moves randomly"
+    },
+    {"bot3", peak_bot, (U0 *)3, "\n"
+        "      a bot that predicts 3 moves and foresees\n"
+        "      wins and losses. if he sees none, he moves randomly"
+    },
+    {"bot4", peak_bot, (U0 *)4, "\n"
+        "      a bot that predicts 4 moves and foresees\n"
+        "      wins and losses. if he sees none, he moves randomly"
+    },
+    {"bot5", peak_bot, (U0 *)5, "\n"
+        "      a bot that predicts 5 moves and foresees\n"
+        "      wins and losses. if he sees none, he moves randomly"
+    },
+    {"peak_bot", peak_bot, NULL, "\n"
+        "      the PERFECT chess bot that predicts EVERY move\n"
+        "      (takes a while)"
     }
 };
 

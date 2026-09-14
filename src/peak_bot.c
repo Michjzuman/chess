@@ -1,5 +1,6 @@
 #include "chess.h"
 #include "tui.h"
+#include "bots.h"
 
 typedef struct {
     U8 progress, max;
@@ -18,6 +19,7 @@ typedef struct {
 } Result;
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
 double calculate_progress(Status *status) {
     double result = 0.0f;
@@ -27,13 +29,29 @@ double calculate_progress(Status *status) {
         double progress = (double)status->layers[i].progress / max;
         result += progress;
     }
-    return result * 100.0f;
+    return result;
+}
+
+U0 status_bar(double p, U8 w) {
+    printf("[");
+    for (U16 x = 0; x < w; x++) {
+        printf((p > (double)x / 50.0f) ? "=" : " ");
+    }
+    printf("]");
+}
+
+U0 log_progress(Status *status) {
+    static U16 previous_log_lines = 0;
+    printf("\033[%uF", previous_log_lines);
+    status_bar(calculate_progress(status), 31);
+    printf("\n");
+    previous_log_lines = 1;
 }
 
 U0 log_status(Status *status) {
     static U16 previous_log_lines = 0;
 
-    U16 shown_log_lines = 40;
+    U16 shown_log_lines = 30;
     U16 first_line = (
         status->depth >= shown_log_lines ?
         status->depth - shown_log_lines + 1 : 0
@@ -41,28 +59,51 @@ U0 log_status(Status *status) {
 
     if (previous_log_lines) printf("\033[%uF", previous_log_lines);
 
+    U16 h = 0;
     for (U16 i = first_line; i <= status->depth; i++) {
         double p = (
             (double)status->layers[i].progress / (double)status->layers[i].max
         );
-        printf("%d. [", i);
-        for (U16 x = 0; x < 50; x++) {
-            printf((p > (double)x / 50.0f) ? "=" : " ");
-        }
+        printf("%d. ", i);
+        status_bar(p, 40);
         printf(
-            "] %d%% (%u/%u)   \n",
+            " %d%% (%u/%u)   \n",
             (int){p * 100.0f},
             status->layers[i].progress, status->layers[i].max
         );
+        h++;
     }
-    printf("total: %llu (%.16f%%)\n", status->count, calculate_progress(status));
-
-    previous_log_lines = status->depth - first_line + 2;
+    for (U8 i = 0; i < 67; i++) printf("-");
+    printf("\ntotal: %llu (%.16f%%)", status->count, calculate_progress(status) * 100.0f);
+    for (U8 i = 0; i < 40; i++) printf(" ");
+    printf("\n");
+    for (U8 i = 0; i < 67; i++) printf(" ");
+    printf("\n");
+    previous_log_lines = h + 3;
 }
 
-U8 peak_bot_recursion(const Game *game, Status *status, U16 depth) {
+typedef struct {
+    const Game *game;
+    Status *status;
+    U16 depth, max_depth;
+    bool log, verbose;
+} RecursionArgs;
+
+Result peak_bot_recursion(
+    const Game *game, Status *status, U16 depth, U16 max_depth,
+    bool log, bool verbose
+) {
     //usleep(100000);
-    if (game->amount_of_legal_moves == 0) return 0;
+
+    if (game->amount_of_legal_moves <= 0 && game->check) {
+        return (Result){
+            .count = depth,
+            .result = game->turn == WHITE ? 2 : 1
+        };
+    } else if (game->draw || (max_depth != 0 && depth > max_depth)) {
+        return (Result){.count = depth, .result = 0};
+    }
+    
     status->layers[depth].max = game->amount_of_legal_moves;
     status->depth = depth;
     Result *results = malloc(game->amount_of_legal_moves * sizeof(Result));
@@ -71,64 +112,77 @@ U8 peak_bot_recursion(const Game *game, Status *status, U16 depth) {
         status->depth = depth;
         status->layers[depth].progress = i;
 
-        log_status(status);
+        if (log) {
+            if (verbose) {
+                if (status->count % 1 == 0) {
+                    log_status(status);
+                }
+            } else if (status->count % 1 == 0) {
+                log_progress(status);
+            }
+        }
 
         Game test_game = copy_game(game);
 
         if (!do_move(&test_game, test_game.legal_moves[i].notation)) exit(1);
         //tui(&test_game, false);
 
-        U8 result = 0;
+        Result result = peak_bot_recursion(
+            &test_game, status, depth + 1, max_depth, log, verbose
+        );
+        result.move = i;
 
-        if (test_game.amount_of_legal_moves <= 0 && test_game.check) {
-            result = test_game.turn == WHITE ? 2 : 1;
-        } else if (!test_game.draw && test_game.amount_of_legal_moves > 0) while (true) {
-            U8 move = peak_bot_recursion(&test_game, status, depth + 1);
-            char *notation = test_game.legal_moves[move].notation;
-            if (!do_move(&test_game, notation)) exit(1);
-            if (test_game.amount_of_legal_moves <= 0 && test_game.check) {
-                result = test_game.turn == WHITE ? 2 : 1;
-                break;
-            }
-            if (test_game.draw) break;
-        }
-
-        results[i].move = i;
-        results[i].result = result;
-        results[i].count = test_game.amount_of_moves;
+        results[i] = result;
         close_game(&test_game);
     }
-    Result final = results[0];
-    for (U8 i = 1; i < game->amount_of_legal_moves; i++) {
-        if (results[i].result == game->turn + 1) {
-            if (
-                final.result != game->turn + 1 ||
-                final.count > results[i].count
-            ) {
-                final = results[i];
-            }
-        } else if (results[i].result == 0) {
-            if (
-                final.result != game->turn + 1 &&
-                final.count < results[i].count
-            ) {
-                final = results[i];
-            }
-        } else {
-            if (
-                final.result != 0 &&
-                final.result != game->turn + 1 &&
-                final.count < results[i].count
-            ) {
-                final = results[i];
+    U8 default_result = jonkler(game, NULL);
+    Result final = results[default_result];
+    for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+        if (i != default_result) {
+            if (results[i].result == game->turn + 1) {
+                if (
+                    final.result != game->turn + 1 ||
+                    final.count > results[i].count
+                ) {
+                    final = results[i];
+                }
+            } else if (results[i].result == 0) {
+                if (
+                    final.result != game->turn + 1 &&
+                    final.count < results[i].count
+                ) {
+                    final = results[i];
+                }
+            } else {
+                if (
+                    final.result != 0 &&
+                    final.result != game->turn + 1 &&
+                    final.count < results[i].count
+                ) {
+                    final = results[i];
+                }
             }
         }
     }
     free(results);
     status->count++;
-    return final.move;
+    return final;
 }
 
-U8 peak_bot(const Game *game, U0 *args) {
-    return peak_bot_recursion(game, &(Status){0}, 0);
+U8 peak_bot(const Game *game, U0 *max_depth) {
+    return peak_bot_recursion(
+        game, &(Status){0}, 0, (uintptr_t)max_depth, true, false
+    ).move;
+}
+
+U8 hypnotised_peak_bot(const Game *game, U0 *arg) {
+    FILE *file = fopen("hypnotise.log", "rb");
+    char ch;
+    fread(&ch, sizeof(char), 1, file);
+    fclose(file);
+    return (
+        ch == 'y' ?
+        human(game, NULL) :
+        peak_bot_recursion(game, &(Status){0}, 0, 0, true, true).move
+    );
 }
