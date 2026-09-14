@@ -33,10 +33,6 @@ static const struct Player players[] = {
         "      requires ollama to be installed and the\n"
         "      model gemma4:e2b-mlx to be downloaded"
     },
-    {"bot1", peak_bot, (U0 *)1, "\n"
-        "      a bot that predicts 1 move and foresees\n"
-        "      wins and losses. if he sees none, he moves randomly"
-    },
     {"bot2", peak_bot, (U0 *)2, "\n"
         "      a bot that predicts 2 moves and foresees\n"
         "      wins and losses. if he sees none, he moves randomly"
