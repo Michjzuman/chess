@@ -35,7 +35,7 @@ double calculate_progress(Status *status) {
 U0 status_bar(double p, U8 w) {
     printf("[");
     for (U16 x = 0; x < w; x++) {
-        printf((p > (double)x / 50.0f) ? "=" : " ");
+        printf((p > (double)x / w) ? "=" : " ");
     }
     printf("]");
 }
@@ -93,7 +93,7 @@ Result peak_bot_recursion(
     const Game *game, Status *status, U16 depth, U16 max_depth,
     bool log, bool verbose
 ) {
-    //usleep(100000);
+    //if (strcmp(game->moves[0], "f4") == 0) usleep(100000);
 
     if (game->amount_of_legal_moves <= 0 && game->check) {
         return (Result){
@@ -128,7 +128,8 @@ Result peak_bot_recursion(
         //tui(&test_game, false);
 
         Result result = peak_bot_recursion(
-            &test_game, status, depth + 1, max_depth, log, verbose
+            &test_game, status, depth + 1, max_depth,
+            log && game->amount_of_moves > 0, verbose
         );
         result.move = i;
 
@@ -185,6 +186,7 @@ Result peak_bot_recursion(
 
 U8 peak_bot(const Game *game, U0 *max_depth) {
     return peak_bot_recursion(
-        game, &(Status){0}, 0, (uintptr_t)max_depth, true, false
+        game, &(Status){0}, 0, (uintptr_t)max_depth,
+        true, (uintptr_t)max_depth > 3
     ).move;
 }

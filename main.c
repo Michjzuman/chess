@@ -22,31 +22,25 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    {"gpt-5.5", codex, "gpt-5.5",
-        "requires codex cli to be installed an set up"
+    {"gpt-6-astra", codex, "gpt-6-astra"},
+    {"gpt-5.6-sol", codex, "gpt-5.6-sol"},
+    {"gpt-5.6-terra", codex, "gpt-5.6-terra"},
+    {"gpt-5.6-luna", codex, "gpt-5.6-luna", "\n"
+        "      require codex cli to be installed an set up"
     },
-    {"gemma4:e2b", ollama, "gemma4:e2b", "\n"
-        "      requires ollama to be installed and the\n"
-        "      model gemma4:e2b to be downloaded"
-    },
+    {"gemma4:e2b", ollama, "gemma4:e2b"},
     {"gemma4:e2b-mlx", ollama, "gemma4:e2b-mlx", "\n"
-        "      requires ollama to be installed and the\n"
-        "      model gemma4:e2b-mlx to be downloaded"
+        "      require ollama to be installed and the\n"
+        "      individual models to be downloaded"
     },
-    {"bot2", peak_bot, (U0 *)2, "\n"
-        "      a bot that predicts 2 moves and foresees\n"
-        "      wins and losses. if he sees none, he moves randomly"
-    },
-    {"bot3", peak_bot, (U0 *)3, "\n"
-        "      a bot that predicts 3 moves and foresees\n"
-        "      wins and losses. if he sees none, he moves randomly"
-    },
-    {"bot4", peak_bot, (U0 *)4, "\n"
-        "      a bot that predicts 4 moves and foresees\n"
-        "      wins and losses. if he sees none, he moves randomly"
-    },
-    {"bot5", peak_bot, (U0 *)5, "\n"
-        "      a bot that predicts 5 moves and foresees\n"
+    {"bot1", peak_bot, (U0 *)1},
+    {"bot2", peak_bot, (U0 *)2},
+    {"bot3", peak_bot, (U0 *)3},
+    {"bot4", peak_bot, (U0 *)4},
+    {"bot5", peak_bot, (U0 *)5},
+    {"bot6", peak_bot, (U0 *)6},
+    {"bot7", peak_bot, (U0 *)7, "\n"
+        "      a bot that predicts <1-7> moves and foresees\n"
         "      wins and losses. if he sees none, he moves randomly"
     },
     {"peak_bot", peak_bot, NULL, "\n"
