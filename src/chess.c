@@ -794,6 +794,7 @@ U0 bg(const Game *game, bool testing) {};
 * 
 * Move notation "#" for checkmate
 * Resignation & Remis
+* En passant, castling & turn in repetition detection
 * 
 \* --- ---- ---- --- */
 
