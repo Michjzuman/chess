@@ -65,15 +65,11 @@ typedef struct {
 typedef struct {
     P start;
     P end;
-    char notation[
-        MAX_MOVE_NOTATION_LEN
-    ];
+    char notation[MAX_MOVE_NOTATION_LEN];
 } Move;
 
 typedef struct {
-    char (*moves)[
-        MAX_MOVE_NOTATION_LEN
-    ];
+    char (*moves)[MAX_MOVE_NOTATION_LEN];
     U16 amount_of_moves;
     U8 moves_capacity: 4;
 
