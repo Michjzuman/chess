@@ -13,4 +13,4 @@ debug: $(ALL) main.c
 	clang $(SRC) main.c $(FLAGS) -o chess -g -O0
 
 test: $(ALL) test.c
-	clang $(SRC) test.c $(FLAGS) -o test
+	clang $(SRC) test.c $(FLAGS) -o test -g -O0

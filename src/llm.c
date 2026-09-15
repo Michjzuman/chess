@@ -57,7 +57,7 @@ U8 ask_llm(const Game *game, char *command) {
 U8 codex(const Game *game, U0 *model) {
     char *history = get_history(game);
     char *legal_moves = get_legal_moves(game);
-    char command[1024];
+    char command[65536];
     snprintf(
         command, sizeof(command),
         "codex exec \""
@@ -78,7 +78,7 @@ U8 codex(const Game *game, U0 *model) {
 U8 ollama(const Game *game, U0 *model) {
     char *history = get_history(game);
     char *legal_moves = get_legal_moves(game);
-    char command[1024];
+    char command[65536];
     snprintf(
         command, sizeof(command),
         "ollama run %s \""
