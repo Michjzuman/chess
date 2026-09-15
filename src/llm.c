@@ -6,7 +6,7 @@ char *get_history(const Game *game) {
         history_len += strlen(game->moves[i]) + 1;
     }
     U8 index = 0;
-    char *history = malloc(history_len);
+    char *history = malloc(history_len + 1);
     if (history == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->moves[i]); i2++) {
@@ -15,6 +15,7 @@ char *get_history(const Game *game) {
         history[strlen(game->moves[i]) + index] = ' ';
         index += strlen(game->moves[i]) + 1;
     }
+    history[index] = '\0';
     return history;
 }
 
@@ -24,7 +25,7 @@ char *get_legal_moves(const Game *game) {
         legal_moves_len += strlen(game->legal_moves[i].notation) + 1;
     }
     U8 index = 0;
-    char *legal_moves = malloc(legal_moves_len);
+    char *legal_moves = malloc(legal_moves_len + 1);
     if (legal_moves == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         for (U8 i2 = 0; i2 < strlen(game->legal_moves[i].notation); i2++) {
@@ -33,6 +34,7 @@ char *get_legal_moves(const Game *game) {
         legal_moves[strlen(game->legal_moves[i].notation) + index] = ' ';
         index += strlen(game->legal_moves[i].notation) + 1;
     }
+    legal_moves[index] = '\0';
     return legal_moves;
 }
 
