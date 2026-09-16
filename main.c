@@ -2,6 +2,7 @@
 #include "tui.h"
 #include "bots.h"
 #include "nn.h"
+#include "pgn.h"
 
 struct Player {
     char *name;
@@ -11,7 +12,7 @@ struct Player {
 };
 
 static const struct Player players[] = {
-    {"human", human, NULL},
+    {"human", human, NULL, "the tui interface for humans"},
     {"jonkler", jonkler, NULL, "a bot that makes random moves"},
     {"random", jonkler, NULL, "alias to jonkler"},
     {"thief", thief, NULL, "\n"
@@ -63,8 +64,11 @@ static const U32 amount_of_players = (
 
 static U0 help() {
     printf(
-        "usage: chess <player | path> <player | path> [--bg] [--benchmark]\n\n"
+        "usage: \n"
+        "   chess <player | path> <player | path>\n"
+        "         [--bg] [--benchmark] [--pgn | -o <path>]\n\n"
         "<player> options:\n"
+        "   <your-name>"
     );
     for (U32 p = 0; p < amount_of_players; p++) {
         printf("   %s", players[p].name);
@@ -80,7 +84,11 @@ static U0 help() {
         "--bg:\n"
         "   run the game in the background (can not be used with human)\n\n"
         "--benchmark:\n"
-        "   let the players rematch forever while counting their wins\n"
+        "   let the players rematch forever while counting their wins\n\n"
+        "--pgn:\n"
+        "   export the game as a pgn file\n\n"
+        "-o <path>:\n"
+        "   export the game as a pgn file to <path>\n"
     );
 }
 
@@ -96,56 +104,70 @@ int main(int argc, char *argv[]) {
     U8 count_selected = 0;
     bool run_in_bg = false;
     bool benchmark = false;
-    if (argc == 1) {
+    bool pgn = false;
+    char *pgn_path = NULL;
+    bool expect_pgn_path = false;
+
+    for (U16 i = 1; i < argc; i++) {
+        U8 arg_len = strlen(argv[i]);
+        if (expect_pgn_path) {
+            pgn_path = argv[i];
+            expect_pgn_path = false;
+        } else if (strcmp(argv[i], "--help") == 0) {
+            help();
+            return 0;
+        } else if (strcmp(argv[i], "--bg") == 0) {
+            run_in_bg = true;
+        } else if (strcmp(argv[i], "--pgn") == 0) {
+            pgn = true;
+        } else if (strcmp(argv[i], "-o") == 0) {
+            pgn = true;
+            expect_pgn_path = true;
+        } else if (strcmp(argv[i], "--benchmark") == 0) {
+            run_in_bg = true;
+            benchmark = true;
+        } else if (
+            count_selected < 2 && arg_len >= 3 &&
+            strcmp(argv[i] + arg_len - 3, ".nn") == 0
+        ) {
+            NN *nn = open_nn(argv[i]);
+            if (nn == NULL) {
+                fprintf(stderr, "could not open neural network %s\n", argv[i]);
+                return 1;
+            }
+            char *slash = strrchr(argv[i], '/');
+            selected_players[count_selected].name = (
+                slash == NULL ? argv[i] : slash + 1
+            );
+            selected_players[count_selected].function = neural_network;
+            selected_players[count_selected].args = nn;
+            count_selected++;
+        } else if (count_selected < 2) {
+            bool found = false;
+            for (U16 p = 0; p < amount_of_players; p++) {
+                if (strcmp(argv[i], players[p].name) == 0) {
+                    selected_players[count_selected] = players[p];
+                    found = true;
+                    count_selected++;
+                    break;
+                }
+            }
+            if (!found && argv[i][0] != '-') {
+                selected_players[count_selected] = (struct Player){
+                    .function = human, .args = NULL,
+                    .name = argv[i]
+                };
+                count_selected++;
+            }
+        } else {
+            help();
+            return 1;
+        }
+    }
+    if (count_selected == 0) {
         selected_players[0] = players[0];
         selected_players[1] = players[0];
         count_selected = 2;
-    } else {
-        for (U16 i = 1; i < argc; i++) {
-            U8 arg_len = strlen(argv[i]);
-            if (strcmp(argv[i], "--help") == 0) {
-                help();
-                return 0;
-            } else if (strcmp(argv[i], "--bg") == 0) {
-                run_in_bg = true;
-            } else if (strcmp(argv[i], "--benchmark") == 0) {
-                run_in_bg = true;
-                benchmark = true;
-            } else if (
-                count_selected < 2 && arg_len >= 3 &&
-                strcmp(argv[i] + arg_len - 3, ".nn") == 0
-            ) {
-                NN *nn = open_nn(argv[i]);
-                if (nn == NULL) {
-                    fprintf(stderr, "could not open neural network %s\n", argv[i]);
-                    return 1;
-                }
-                char *slash = strrchr(argv[i], '/');
-                selected_players[count_selected].name = (
-                    slash == NULL ? argv[i] : slash + 1
-                );
-                selected_players[count_selected].function = neural_network;
-                selected_players[count_selected].args = nn;
-                count_selected++;
-            } else if (count_selected < 2) {
-                bool found = false;
-                for (U16 p = 0; p < amount_of_players; p++) {
-                    if (strcmp(argv[i], players[p].name) == 0) {
-                        selected_players[count_selected] = players[p];
-                        found = true;
-                        count_selected++;
-                        break;
-                    }
-                }
-                if (!found) {
-                    help();
-                    return 1;
-                }
-            } else {
-                help();
-                return 1;
-            }
-        }
     }
     if (count_selected == 1) {
         U8 p1_color = rand() % 2;
@@ -194,11 +216,16 @@ int main(int argc, char *argv[]) {
                     }
                     printf("%d\n", results[p + 1]);
                 }
-                U8 winner = play(run_in_bg ? bg : tui,
+                U8 winner = play_full(run_in_bg ? bg : tui,
                     selected_players[switch_players].function,
                     selected_players[switch_players].args,
                     selected_players[1 - switch_players].function,
-                    selected_players[1 - switch_players].args
+                    selected_players[1 - switch_players].args,
+                    pgn, &(PGNArgs){
+                        .p1 = selected_players[switch_players].name,
+                        .p2 = selected_players[1 - switch_players].name,
+                        .path = pgn_path
+                    }
                 );
                 if (winner == 0) {
                     results[0]++;
@@ -216,9 +243,14 @@ int main(int argc, char *argv[]) {
                 help();
                 return 1;
             }
-            U8 winner = play(run_in_bg ? bg : tui,
+            U8 winner = play_full(run_in_bg ? bg : tui,
                 selected_players[0].function, selected_players[0].args,
-                selected_players[1].function, selected_players[1].args
+                selected_players[1].function, selected_players[1].args,
+                pgn, &(PGNArgs){
+                    .p1 = selected_players[0].name,
+                    .p2 = selected_players[1].name,
+                    .path = pgn_path
+                }
             );
             if (winner == 0) {
                 printf("draw\n");

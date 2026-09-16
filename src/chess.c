@@ -1,4 +1,5 @@
 #include "chess.h"
+#include "pgn.h"
 
 /////////////////////////////////////////
 ///[ chess.c ]///////////////////////////
@@ -753,37 +754,43 @@ bool do_move(Game *game, char *notation) {
     return false;
 }
 
-U8 play(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2) {
+U8 play_full(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2, bool pgn, PGNArgs *pgn_args) {
     srand(time(NULL));
 
     Game game = new_game();
 
     visualize(&game, false);
     
+    U8 result = 0;
     while (true) {
         PF player = game.turn == WHITE ? p1 : p2;
         U0 *args = game.turn == WHITE ? args1 : args2;
-        
-        char *notation = game.legal_moves[player(&game, args)].notation;
-        
-        bool legal = do_move(&game, notation);
-        
-        if (!legal) {
-            close_game(&game);
-            return 0;
-        };
-        
+        char *move = game.legal_moves[player(&game, args)].notation;
+        if (!do_move(&game, move)) break;
+
         visualize(&game, false);
 
         if (game.amount_of_legal_moves <= 0 && game.check) {
-            close_game(&game);
-            return game.turn == WHITE ? 2 : 1;
+            result = game.turn == WHITE ? 2 : 1;
+            break;
         }
-        if (game.draw) {
-            close_game(&game);
-            return 0;
-        }
+
+        if (game.draw) break;
     }
+    if (pgn) {
+        pgn_args->result = result;
+        create_pgn(&game, pgn_args);
+    }
+    close_game(&game);
+    return result;
+}
+
+U8 play(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2) {
+    return play_full(visualize, p1, args1, p2, args2, false, NULL);
+}
+
+U8 play_with_pgn(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2, PGNArgs *pgn_args) {
+    return play_full(visualize, p1, args1, p2, args2, true, pgn_args);
 }
 
 U0 bg(const Game *game, bool testing) {};

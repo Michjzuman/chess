@@ -118,9 +118,7 @@ U0 out_of_mem();
 
 Game new_game();
 
-Game copy_game(
-    const Game *source
-);
+Game copy_game(const Game *source);
 
 U0 close_game(Game *game);
 
@@ -132,16 +130,9 @@ U0 raw_move_minimal(Game *game, Move move);
 
 U0 calculate_legal_moves(Game *game);
 
-bool do_move(
-    Game *game,
-    char *notation
-);
+bool do_move(Game *game, char *notation);
 
-U8 play(
-    VF visualize,
-    PF p1, U0 *,
-    PF p2, U0 *
-);
+U8 play(VF visualize, PF p1, U0 *, PF p2, U0 *);
 
 U0 bg(const Game *game, bool testing);
 

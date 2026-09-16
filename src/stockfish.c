@@ -72,8 +72,7 @@ char *ask_stockfish(const Game *game, U32 time) {
     FILE *pipe = popen(command, "r");
     if (pipe == NULL) {
         fprintf(stderr,
-            "stockfish could not move"
-            " because pipe could not be opened\n"
+            "stockfish could not move because pipe could not be opened\n"
         );
         exit(1);
     }

@@ -2,6 +2,6 @@
 *.dSYM
 brains
 chess
-test
-test.c
+test*
 *.log
+*.pgn
