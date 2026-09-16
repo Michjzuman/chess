@@ -22,17 +22,6 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    {"gpt-6-astra", codex, "gpt-6-astra"},
-    {"gpt-5.6-sol", codex, "gpt-5.6-sol"},
-    {"gpt-5.6-terra", codex, "gpt-5.6-terra"},
-    {"gpt-5.6-luna", codex, "gpt-5.6-luna", "\n"
-        "      require codex cli to be installed an set up"
-    },
-    {"gemma4:e2b", ollama, "gemma4:e2b"},
-    {"gemma4:e2b-mlx", ollama, "gemma4:e2b-mlx", "\n"
-        "      require ollama to be installed and the\n"
-        "      individual models to be downloaded"
-    },
     {"bot1", peak_bot, (U0 *)1},
     {"bot2", peak_bot, (U0 *)2},
     {"bot3", peak_bot, (U0 *)3},
@@ -46,6 +35,21 @@ static const struct Player players[] = {
     {"peak_bot", peak_bot, NULL, "\n"
         "      the PERFECT chess bot that predicts EVERY move\n"
         "      (takes a while)"
+    },
+    {"gpt-6-astra", codex, "gpt-6-astra"},
+    {"gpt-5.6-sol", codex, "gpt-5.6-sol"},
+    {"gpt-5.6-terra", codex, "gpt-5.6-terra"},
+    {"gpt-5.6-luna", codex, "gpt-5.6-luna", "\n"
+        "      require codex cli to be installed an set up"
+    },
+    {"gemma4:e2b", ollama, "gemma4:e2b"},
+    {"gemma4:e2b-mlx", ollama, "gemma4:e2b-mlx", "\n"
+        "      require ollama to be installed and the\n"
+        "      individual models to be downloaded"
+    },
+    {"stockfish-fast", stockfish, (U0 *)1000},
+    {"stockfish", stockfish, (U0 *)10000,
+        "require stockfish to be installed"
     }
 };
 

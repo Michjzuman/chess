@@ -758,6 +758,8 @@ U8 play(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2) {
 
     Game game = new_game();
 
+    visualize(&game, false);
+    
     while (true) {
         PF player = game.turn == WHITE ? p1 : p2;
         U0 *args = game.turn == WHITE ? args1 : args2;

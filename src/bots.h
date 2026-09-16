@@ -11,6 +11,7 @@ U8 murderer(const Game *, U0 *);
 
 U8 codex(const Game *, U0 *model);
 U8 ollama(const Game *, U0 *model);
+U8 stockfish(const Game *, U0 *time);
 
 U8 neural_network(const Game *, U0 *nn);
 
