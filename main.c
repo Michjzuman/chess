@@ -42,6 +42,10 @@ static const struct Player players[] = {
     {"gpt-5.6-luna", codex, "gpt-5.6-luna", "\n"
         "      require codex cli to be installed an set up"
     },
+    {"qwen3.5:4b-mxfp8", ollama, "qwen3.5:4b-mxfp8"},
+    {"qwen3.5:9b-mxfp8", ollama, "qwen3.5:9b-mxfp8"},
+    {"gemma3:270m", ollama, "gemma3:270m"},
+    {"gemma3:1b", ollama, "gemma3:1b"},
     {"gemma4:e2b", ollama, "gemma4:e2b"},
     {"gemma4:e2b-mlx", ollama, "gemma4:e2b-mlx", "\n"
         "      require ollama to be installed and the\n"

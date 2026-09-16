@@ -112,7 +112,7 @@ Result peak_bot_recursion(
         status->depth = depth;
         status->layers[depth].progress = i;
 
-        if (log && game->amount_of_moves > 0) {
+        if (log && status->count % 1000 == 0) {
             if (verbose) {
                 if (status->count % 1 == 0) {
                     log_status(status);
@@ -129,7 +129,7 @@ Result peak_bot_recursion(
 
         Result result = peak_bot_recursion(
             &test_game, status, depth + 1, max_depth,
-            log && game->amount_of_moves > 0, verbose
+            log > 0, verbose
         );
         result.move = i;
 

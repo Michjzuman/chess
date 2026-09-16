@@ -11,14 +11,14 @@ Requirements:
 llvm clang git make
 ```
 
-Download & Compile:
+Download, Compile, Install:
 ```bash
 git clone https://github.com/michjzuman/chess
 cd chess
-make
+make install
 ```
 
 Run:
 ```bash
-./chess
+chess
 ```
