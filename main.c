@@ -152,12 +152,17 @@ int main(int argc, char *argv[]) {
                     break;
                 }
             }
-            if (!found && argv[i][0] != '-') {
-                selected_players[count_selected] = (struct Player){
-                    .function = human, .args = NULL,
-                    .name = argv[i]
-                };
-                count_selected++;
+            if (!found) {
+                if (argv[i][0] != '-') {
+                    selected_players[count_selected] = (struct Player){
+                        .function = human, .args = NULL,
+                        .name = argv[i]
+                    };
+                    count_selected++;
+                } else {
+                    help();
+                    return 1;
+                }
             }
         } else {
             help();
