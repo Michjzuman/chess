@@ -68,7 +68,7 @@ static U0 help() {
         "   chess <player | path> <player | path>\n"
         "         [--bg] [--benchmark] [--pgn | -o <path>]\n\n"
         "<player> options:\n"
-        "   <your-name>"
+        "   <your-name>\n"
     );
     for (U32 p = 0; p < amount_of_players; p++) {
         printf("   %s", players[p].name);
