@@ -3,6 +3,7 @@
 #include "bots.h"
 #include "nn.h"
 #include "pgn.h"
+#include "net.h"
 
 struct Player {
     char *name;
@@ -67,6 +68,11 @@ static U0 help() {
         "usage: \n"
         "   chess <player | path> <player | path>\n"
         "         [--bg] [--benchmark] [--pgn | -o <path>]\n\n"
+        "   OR:\n"
+        "       chess --host <port>\n"
+        "       chess --join <ip-adress>:<port>\n"
+        "           if no port is provided it will\n"
+        "           use the default port: 6767.\n"
         "<player> options:\n"
         "   <your-name>\n"
     );
@@ -100,22 +106,40 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    struct Player selected_players[2];
+    struct Player selected_players[2] = {players[0], players[0]};
     U8 count_selected = 0;
     bool run_in_bg = false;
     bool benchmark = false;
     bool pgn = false;
     char *pgn_path = NULL;
     bool expect_pgn_path = false;
+    bool net_play = false;
+    bool net_host;
+    char *net_args = NULL;
+    bool expect_net_args = false;
 
     for (U16 i = 1; i < argc; i++) {
         U8 arg_len = strlen(argv[i]);
-        if (expect_pgn_path) {
+        if (expect_net_args && argv[i][0] != '-') {
+            net_args = argv[i];
+            expect_net_args = false;
+        } else if (expect_net_args) {
+            expect_net_args = false;
+            i--;
+        } else if (expect_pgn_path) {
             pgn_path = argv[i];
             expect_pgn_path = false;
         } else if (strcmp(argv[i], "--help") == 0) {
             help();
             return 0;
+        } else if (strcmp(argv[i], "--host") == 0) {
+            net_play = true;
+            net_host = true;
+            expect_net_args = true;
+        } else if (strcmp(argv[i], "--join") == 0) {
+            net_play = true;
+            net_host = false;
+            expect_net_args = true;
         } else if (strcmp(argv[i], "--bg") == 0) {
             run_in_bg = true;
         } else if (strcmp(argv[i], "--pgn") == 0) {
@@ -168,6 +192,36 @@ int main(int argc, char *argv[]) {
             help();
             return 1;
         }
+    }
+    if (net_play) {
+        PGNArgs pgn_args = {
+            .p1 = selected_players[0].name,
+            .p2 = selected_players[1].name,
+            .path = pgn_path
+        };
+        if (net_host) {
+            U16 port = net_args == NULL ? 0 : atoi(net_args);
+            init_net_host(port == 0 ? 6767 : port);
+            play_full(
+                tui, net_local, NULL, net_peer, NULL,
+                pgn, &pgn_args
+            );
+        } else {
+            if (net_args == NULL) {
+                help();
+                return 1;
+            }
+            char *dp = strchr(net_args, ':');
+            U16 port = dp == NULL ? 0 : atoi(dp + 1);
+            if (dp != NULL) *dp = '\0';
+            init_net_join(net_args, port == 0 ? 6767 : port);
+            play_full(
+                tui, net_peer, NULL, net_local, NULL,
+                pgn, &pgn_args
+            );
+        }
+        close_net();
+        return 0;
     }
     if (count_selected == 0) {
         selected_players[0] = players[0];
