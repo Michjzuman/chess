@@ -72,7 +72,7 @@ static U0 help() {
         "       chess --host <port>\n"
         "       chess --join <ip-adress>:<port>\n"
         "           if no port is provided it will\n"
-        "           use the default port: 6767.\n"
+        "           use the default port: 6767.\n\n"
         "<player> options:\n"
         "   <your-name>\n"
     );
