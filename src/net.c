@@ -63,7 +63,7 @@ U0 close_net(U0) {
 U8 net_local(const Game *game, U0 *args) {
     U8 result = human(game, NULL);
     if (write(sock, &result, sizeof(U8)) != sizeof(U8)) {
-        fprintf(stderr, "network write failed\n");
+        fprintf(stderr, "game disconnected\n");
         exit(1);
     }
     return result;
@@ -72,7 +72,7 @@ U8 net_local(const Game *game, U0 *args) {
 U8 net_peer(const Game *game, U0 *args) {
     U8 result;
     if (read(sock, &result, sizeof(U8)) != sizeof(U8)) {
-        fprintf(stderr, "network read failed\n");
+        fprintf(stderr, "game disconnected\n");
         exit(1);
     }
     if (result >= game->amount_of_legal_moves) {
