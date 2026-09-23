@@ -13,6 +13,8 @@ U0 init_net_host(U16 local_port) {
         perror("socket");
         exit(1);
     }
+    int reuse = 1;
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
         .sin_port = htons(local_port),
