@@ -39,9 +39,9 @@ static const struct Player players[] = {
         "      (takes a while)"
     },
     {"gpt-6-astra", codex, "gpt-6-astra"},
-    {"gpt-5.6-sol", codex, "gpt-5.6-sol"},
+    {"gpt-6.1-sol", codex, "gpt-6.1-sol"},
     {"gpt-5.6-terra", codex, "gpt-5.6-terra"},
-    {"gpt-5.6-luna", codex, "gpt-5.6-luna", "\n"
+    {"gpt-6-luna", codex, "gpt-6-luna", "\n"
         "      require codex cli to be installed an set up"
     },
     {"qwen3.5:4b-mxfp8", ollama, "qwen3.5:4b-mxfp8"},
