@@ -54,7 +54,8 @@ static const struct Player players[] = {
         "      individual models to be downloaded"
     },
     {"stockfish-fast", stockfish, (U0 *)1000},
-    {"stockfish", stockfish, (U0 *)10000,
+    {"stockfish", stockfish, (U0 *)2000},
+    {"stockfish-peak", stockfish, (U0 *)10000,
         "require stockfish to be installed"
     }
 };
