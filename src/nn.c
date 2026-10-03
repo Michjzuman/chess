@@ -272,10 +272,13 @@ float *ask_nn(const NN *nn, float *inputs) {
     return prev_signals;
 }
 
+#define MAX_LAYERS 32
+#define MAX_NEURONS 500
+
 NN new_chess_nn() {
     NN nn = {
         .amount_of_inputs = 664,
-        .amount_of_layers = (U32)rand() % 8 + 1,
+        .amount_of_layers = (U32)rand() % MAX_LAYERS + 1,
         .layers = malloc(nn.amount_of_layers * sizeof(Layer))
     };
     if (nn.layers == NULL) out_of_mem();
@@ -286,7 +289,7 @@ NN new_chess_nn() {
             .activation = rand() % 4,
             .amount_of_neurons = (
                 i1 == nn.amount_of_layers - 1 ?
-                132 : (U32)rand() % 125 + 132
+                132 : (U32)rand() % MAX_NEURONS + 132
             )
         };
         nn.layers[i1].neurons = malloc(
