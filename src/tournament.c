@@ -262,21 +262,6 @@ U0 *simulate_game(U0 *simargs) {
         //printf("----- [end] ---------------------------\n");
     }
 
-    for (U8 i = 0; i < 2; i++) {
-        TPlayer *player = &game->t->players[game->p[i]];
-        atomic_U8 *in_use = &player->in_use;
-        if (player->type == NN_TPlayer) {
-            atomic_store(in_use, atomic_load(in_use) - 1);
-            if (atomic_load(in_use) <= 0) {
-                /*printf(
-                    "#################################### %s --> free\n",
-                    player->name
-                );*/
-                close_nn(player->arg.nn);
-            }
-        }
-    }
-
     atomic_store(&game->done, true);
 
     return (U0 *)winner;
@@ -317,6 +302,15 @@ static U0 end_simulation(
                 TPlayer *players[2];
                 players[0] = &t->players[all_games[i2].p[0]];
                 players[1] = &t->players[all_games[i2].p[1]];
+
+                for (U8 p = 0; p < 2; p++) {
+                    TPlayer *player = players[p];
+                    if (player->type == NN_TPlayer &&
+                        atomic_fetch_sub(&player->in_use, 1) == 1) {
+                        close_nn(player->arg.nn);
+                        player->arg.nn = NULL;
+                    }
+                }
 
                 MemorizedGame *memorized_game = &next_game_memory->memorized_games[total_game_count];
                 memorized_game->result = winner;
