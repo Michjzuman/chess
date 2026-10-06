@@ -314,126 +314,104 @@ NN new_chess_nn() {
     return nn;
 }
 
-U8 ask_chess_nn(const Game *game, const NN *nn) {
+float *get_chess_nn_inputs(const Game *game, const NN *nn) {
     float *inputs = malloc(nn->amount_of_inputs * sizeof(float));
     if (inputs == NULL) out_of_mem();
-    
-    {
-        U32 index = 0;
-        for (U8 color = 0; color < 2; color++) {
-            U8 me = game->turn == 0 ? color : 1 - color;
-            for (U8 type = 1; type < 6; type++) {
-                for (U8 y = 0; y < SIZE; y++) {
-                    for (U8 x = 0; x < SIZE; x++) {
-                        inputs[index] = (
-                            (
-                                xy(game, x, y).type == type &&
-                                xy(game, x, y).color == me
-                            ) ? 1.0f : 0.0f
-                        );
-                        index++;
-                    }
+    U32 index = 0;
+    for (U8 color = 0; color < 2; color++) {
+        U8 me = game->turn == 0 ? color : 1 - color;
+        for (U8 type = 1; type < 6; type++) {
+            for (U8 y = 0; y < SIZE; y++) {
+                for (U8 x = 0; x < SIZE; x++) {
+                    inputs[index] = (
+                        (
+                            xy(game, x, y).type == type &&
+                            xy(game, x, y).color == me
+                        ) ? 1.0f : 0.0f
+                    );
+                    index++;
                 }
-            }
-            inputs[index] = game->check ? 1.0f : 0.0f;
-            index++;
-            inputs[index] = (
-                me == 0 ? game->moved_king_w : game->moved_king_b
-            ) ? 1.0f : 0.0f;
-            index++;
-            inputs[index] = (
-                me == 0 ? game->moved_rook_r_w : game->moved_rook_r_b
-            ) ? 1.0f : 0.0f;
-            index++;
-            inputs[index] = (
-                me == 0 ? game->moved_rook_l_w : game->moved_rook_l_b
-            ) ? 1.0f : 0.0f;
-            index++;
-            for (U8 x = 0; x < SIZE; x++) {
-                inputs[index] = (
-                    game->en_passant_line_plus1 == x + 1 ? 1.0f : 0.0f
-                );
-                index++;
             }
         }
+        inputs[index] = game->check ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            me == 0 ? game->moved_king_w : game->moved_king_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            me == 0 ? game->moved_rook_r_w : game->moved_rook_r_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        inputs[index] = (
+            me == 0 ? game->moved_rook_l_w : game->moved_rook_l_b
+        ) ? 1.0f : 0.0f;
+        index++;
+        for (U8 x = 0; x < SIZE; x++) {
+            inputs[index] = (
+                game->en_passant_line_plus1 == x + 1 ? 1.0f : 0.0f
+            );
+            index++;
+        }
     }
+    return inputs;
+}
 
+U8 ask_chess_nn(const Game *game, const NN *nn) {
+    float *inputs = get_chess_nn_inputs(game, nn);
     float *answer = ask_nn(nn, inputs);
-    
-    /*
-    for (U32 i = 0; i < amount_of_outputs(nn); i++) {
-        printf("%f ", answer[i]);
-    }
-    printf("\n");
-    */
-
+   
     U8 result = 0;
     
-    {
-        float max_value = 0;
-        bool first_value = true;
-        for (U8 y1 = 0; y1 < SIZE; y1++) {
-            for (U8 x1 = 0; x1 < SIZE; x1++) {
-                for (U8 y2 = 0; y2 < SIZE; y2++) {
-                    for (U8 x2 = 0; x2 < SIZE; x2++) {
-                        if (x1 != x2 || y1 != y2) {
-                            for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-                                if (
-                                    game->legal_moves[i].start.x == x1 &&
-                                    game->legal_moves[i].start.y == y1 &&
-                                    game->legal_moves[i].end.x == x2 &&
-                                    game->legal_moves[i].end.y == y2
-                                ) {
-                                    bool promotion = (
-                                        (y2 == 0 || y2 == SIZE - 1) &&
-                                        xy(game, x1, y1).type == PAWN
-                                    );
-                                    U8 promotion_piece = 0;
-                                    bool right_promotion_piece = false;
-                                    if (promotion) {
-                                        float max = answer[SIZE * SIZE * 2];
-                                        promotion_piece = 2;
-                                        for (U8 piece = 1; piece < 4; piece++) {
-                                            float value = (
-                                                answer[SIZE * SIZE * 2 + piece]
-                                            );
-                                            if (value > max) {
-                                                max = value;
-                                                promotion_piece = piece + 2;
-                                            }
-                                        }
-                                        char *notation = game->legal_moves[i].notation;
-                                        U8 notation_len = strlen(notation);
-                                        if (
-                                            notation[notation_len - 1] ==
-                                            piece_letters[promotion_piece] ||
-                                            (
-                                                (
-                                                    notation[notation_len - 1] == '+' ||
-                                                    notation[notation_len - 1] == '#'
-                                                ) &&
-                                                notation[notation_len - 2] ==
-                                                piece_letters[promotion_piece]
-                                            )
-                                        ) right_promotion_piece = true;
-                                    }
-                                    if (!promotion || right_promotion_piece) {
-                                        float value = (
-                                            answer[y1 * SIZE + x1] +
-                                            answer[y2 * SIZE + x2]
-                                        );
-                                        if (value > max_value || first_value) {
-                                            max_value = value;
-                                            result = i;
-                                            first_value = false;
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
+    float max_value = 0;
+    bool first_value = true;
+    for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
+        U8 x1 = game->legal_moves[i].start.x;
+        U8 y1 = game->legal_moves[i].start.y;
+        U8 x2 = game->legal_moves[i].end.x;
+        U8 y2 = game->legal_moves[i].end.y;
+        bool promotion = (
+            (y2 == 0 || y2 == SIZE - 1) &&
+            xy(game, x1, y1).type == PAWN
+        );
+        U8 promotion_piece = 0;
+        bool right_promotion_piece = false;
+        if (promotion) {
+            float max = answer[SIZE * SIZE * 2];
+            promotion_piece = 2;
+            for (U8 piece = 1; piece < 4; piece++) {
+                float value = (
+                    answer[SIZE * SIZE * 2 + piece]
+                );
+                if (value > max) {
+                    max = value;
+                    promotion_piece = piece + 2;
                 }
+            }
+            char *notation = game->legal_moves[i].notation;
+            U8 notation_len = strlen(notation);
+            if (
+                notation[notation_len - 1] ==
+                piece_letters[promotion_piece] ||
+                (
+                    (
+                        notation[notation_len - 1] == '+' ||
+                        notation[notation_len - 1] == '#'
+                    ) &&
+                    notation[notation_len - 2] ==
+                    piece_letters[promotion_piece]
+                )
+            ) right_promotion_piece = true;
+        }
+        if (!promotion || right_promotion_piece) {
+            float value = (
+                answer[y1 * SIZE + x1] +
+                answer[SIZE * SIZE + y2 * SIZE + x2]
+            );
+            if (value > max_value || first_value) {
+                max_value = value;
+                result = i;
+                first_value = false;
             }
         }
     }

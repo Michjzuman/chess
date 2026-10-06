@@ -37,6 +37,8 @@ float *ask_nn(const NN *, float *);
 NN new_chess_nn();
 U8 ask_chess_nn(const Game *, const NN *);
 
+float *get_chess_nn_inputs(const Game *, const NN *);
+
 U0 tournament(U8 amount_of_threads);
 
 #endif
