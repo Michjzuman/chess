@@ -12,10 +12,13 @@ typedef struct {
     U64 count;
 } Status;
 
-typedef struct {
-    U8 move;
-    U8 result;
-    U16 count;
+typedef union {
+    struct {
+        U8 move;
+        U8 result;
+        U16 count;
+    };
+    U0 *ptr;
 } Result;
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
@@ -30,56 +33,6 @@ double calculate_progress(Status *status) {
         result += progress;
     }
     return result;
-}
-
-U0 status_bar(double p, U8 w) {
-    printf("[");
-    for (U16 x = 0; x < w; x++) {
-        printf((p > (double)x / w) ? "=" : " ");
-    }
-    printf("]");
-}
-
-U0 log_progress(Status *status) {
-    static U16 previous_log_lines = 0;
-    printf("\033[%uF", previous_log_lines);
-    status_bar(calculate_progress(status), 31);
-    printf("\n");
-    previous_log_lines = 1;
-}
-
-U0 log_status(Status *status) {
-    static U16 previous_log_lines = 0;
-
-    U16 shown_log_lines = 30;
-    U16 first_line = (
-        status->depth >= shown_log_lines ?
-        status->depth - shown_log_lines + 1 : 0
-    );
-
-    if (previous_log_lines) printf("\033[%uF", previous_log_lines);
-
-    U16 h = 0;
-    for (U16 i = first_line; i <= status->depth; i++) {
-        double p = (
-            (double)status->layers[i].progress / (double)status->layers[i].max
-        );
-        printf("%d. ", i);
-        status_bar(p, 40);
-        printf(
-            " %d%% (%u/%u)   \n",
-            (int){p * 100.0f},
-            status->layers[i].progress, status->layers[i].max
-        );
-        h++;
-    }
-    for (U8 i = 0; i < 67; i++) printf("-");
-    printf("\ntotal: %llu (%.16f%%)", status->count, calculate_progress(status) * 100.0f);
-    for (U8 i = 0; i < 40; i++) printf(" ");
-    printf("\n");
-    for (U8 i = 0; i < 67; i++) printf(" ");
-    printf("\n");
-    previous_log_lines = h + 3;
 }
 
 U0 log_reasoning(const Game *game, Result *results, Result final) {
@@ -110,20 +63,24 @@ typedef struct {
     const Game *game;
     Status *status;
     U16 depth, max_depth;
-    bool log, verbose;
+    bool visualize;
 } RecursionArgs;
 
-Result peak_bot_recursion(
-    const Game *game, Status *status, U16 depth, U16 max_depth,
-    bool visualize
-) {
+U0 *peak_bot_recursion(U0 *pargs) {
+    RecursionArgs *args = pargs;
+    const Game *game = args->game;
+    Status *status = args->status;
+    U16 depth = args->depth;
+    U16 max_depth = args->max_depth;
+    bool visualize = args->visualize;
+
     if (game->amount_of_legal_moves <= 0 && game->check) {
         return (Result){
             .count = depth,
             .result = game->turn == WHITE ? 2 : 1
-        };
+        }.ptr;
     } else if (game->draw || (max_depth != 0 && depth >= max_depth)) {
-        return (Result){.count = depth, .result = 0};
+        return (Result){.count = depth, .result = 0}.ptr;
     }
     
     status->layers[depth].max = game->amount_of_legal_moves;
@@ -139,9 +96,14 @@ Result peak_bot_recursion(
         if (!do_move(&test_game, test_game.legal_moves[i].notation)) exit(1);
         if (visualize) tui(&test_game, false);
 
-        Result result = peak_bot_recursion(
-            &test_game, status, depth + 1, max_depth, visualize
-        );
+        Result result;
+        result.ptr = peak_bot_recursion(&(RecursionArgs){
+            .game = &test_game,
+            .status = status,
+            .depth = depth + 1,
+            .max_depth = max_depth,
+            .visualize = visualize
+        });
         result.move = i;
 
         results[i] = result;
@@ -168,11 +130,18 @@ Result peak_bot_recursion(
     if (depth == 0) log_reasoning(game, results, final);
     free(results);
     status->count++;
-    return final;
+    return final.ptr;
 }
 
 U8 peak_bot(const Game *game, U0 *max_depth) {
-    return peak_bot_recursion(
-        game, &(Status){0}, 0, (uintptr_t)max_depth, true
-    ).move;
+    Result result;
+    result.ptr = peak_bot_recursion(&(RecursionArgs){
+        .game = game,
+        .status = &(Status){0},
+        .depth = 0,
+        .max_depth = (uintptr_t)max_depth,
+        .visualize = true
+    });
+    return result.move;
 }
+
