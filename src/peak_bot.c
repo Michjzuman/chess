@@ -12,10 +12,13 @@ typedef struct {
     U64 count;
 } Status;
 
+enum {DRAW, WINNING, LOSING, UNKNOWN};
+#define OUTCOME_NAMES (char *[]){"draw", "winning", "losing", "?"}
+
 typedef union {
     struct {
         U8 move;
-        U8 result;
+        U8 outcome;
         U16 count;
     };
     U0 *ptr;
@@ -41,9 +44,7 @@ U0 log_reasoning(const Game *game, Result *results, Result final) {
         fprintf(
             file, "%u. [%s] %s in %u\n",
             i, game->legal_moves[i].notation,
-            results[i].result == 0 ? "?" : (
-                results[i].result == game->turn + 1 ? "winning" : "losing"
-            ),
+            OUTCOME_NAMES[results[i].outcome],
             results[i].count
         );
     }
@@ -51,9 +52,7 @@ U0 log_reasoning(const Game *game, Result *results, Result final) {
     fprintf(
         file, "\n--> %u. [%s] %s in %u\n",
         f, game->legal_moves[f].notation,
-        results[f].result == 0 ? "?" : (
-            results[f].result == game->turn + 1 ? "winning" : "losing"
-        ),
+        OUTCOME_NAMES[results[f].outcome],
         results[f].count
     );
     fclose(file);
@@ -75,18 +74,17 @@ U0 *peak_bot_recursion(U0 *pargs) {
     bool visualize = args->visualize;
 
     if (game->amount_of_legal_moves <= 0 && game->check) {
-        return (Result){
-            .count = depth,
-            .result = game->turn == WHITE ? 2 : 1
-        }.ptr;
-    } else if (game->draw || (max_depth != 0 && depth >= max_depth)) {
-        return (Result){.count = depth, .result = 0}.ptr;
+        return (Result){.count = depth, .outcome = LOSING}.ptr;
+    } else if (game->draw) {
+        return (Result){.count = depth, .outcome = DRAW}.ptr;
+    } else if (max_depth != 0 && depth >= max_depth) {
+        return (Result){.count = depth, .outcome = UNKNOWN}.ptr;
     }
     
     status->layers[depth].max = game->amount_of_legal_moves;
     status->depth = depth;
     Result *results = malloc(game->amount_of_legal_moves * sizeof(Result));
-    if (!results) exit(1);
+    if (results == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         status->depth = depth;
         status->layers[depth].progress = i;
@@ -104,6 +102,11 @@ U0 *peak_bot_recursion(U0 *pargs) {
             .max_depth = max_depth,
             .visualize = visualize
         });
+        if (result.outcome == WINNING) {
+            result.outcome = LOSING;
+        } else if (result.outcome == LOSING) {
+            result.outcome = WINNING;
+        }
         result.move = i;
 
         results[i] = result;
@@ -114,12 +117,12 @@ U0 *peak_bot_recursion(U0 *pargs) {
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         if (i != default_result) {
             Result this = results[i];
-            bool this_wins = results[i].result == game->turn + 1;
-            bool this_draws = results[i].result == 0;
-            bool this_loses = !this_wins && !this_draws;
-            bool winning = final.result == game->turn + 1;
-            bool drawing = final.result == 0;
-            bool losing = !winning && !drawing;
+            bool this_wins = this.outcome == WINNING;
+            bool this_draws = this.outcome == DRAW || this.outcome == UNKNOWN;
+            bool this_loses = this.outcome == LOSING;
+            bool winning = final.outcome == WINNING;
+            bool drawing = final.outcome == DRAW || final.outcome == UNKNOWN;
+            bool losing = final.outcome == LOSING;
             if (
                 (this_wins && (!winning || this.count < final.count)) ||
                 (this_draws && (losing || (!winning && this.count > final.count))) ||
@@ -140,7 +143,7 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
         .status = &(Status){0},
         .depth = 0,
         .max_depth = (uintptr_t)max_depth,
-        .visualize = true
+        .visualize = false
     });
     return result.move;
 }
