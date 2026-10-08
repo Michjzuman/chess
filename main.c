@@ -24,19 +24,20 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    {"bot1", peak_bot, (U0 *)1},
-    {"bot2", peak_bot, (U0 *)2},
-    {"bot3", peak_bot, (U0 *)3},
-    {"bot4", peak_bot, (U0 *)4},
-    {"bot5", peak_bot, (U0 *)5},
-    {"bot6", peak_bot, (U0 *)6},
-    {"bot7", peak_bot, (U0 *)7, "\n"
+    {"bot1", peak_bot, &(PeakBotArgs){.max_depth = 1}},
+    {"bot2", peak_bot, &(PeakBotArgs){.max_depth = 2}},
+    {"bot3", peak_bot, &(PeakBotArgs){.max_depth = 3}},
+    {"bot4", peak_bot, &(PeakBotArgs){.max_depth = 4}},
+    {"bot5", peak_bot, &(PeakBotArgs){.max_depth = 5}},
+    {"bot6", peak_bot, &(PeakBotArgs){.max_depth = 6}},
+    {"bot7", peak_bot, &(PeakBotArgs){.max_depth = 7}, "\n"
         "      a bot that predicts <1-7> moves and foresees\n"
-        "      wins and losses. if he sees none, he moves randomly"
+        "      wins and losses. if he sees none, he moves randomly\n"
+        "      (runs on multiple threads)"
     },
-    {"peak_bot", peak_bot, NULL, "\n"
+    {"peak_bot", peak_bot, &(PeakBotArgs){.max_depth = 0}, "\n"
         "      the PERFECT chess bot that predicts EVERY move\n"
-        "      (takes a while)"
+        "      (takes a while) (runs on multiple threads)"
     },
     {"gpt-6-astra", codex, "gpt-6-astra"},
     {"gpt-6.1-sol", codex, "gpt-6.1-sol"},
@@ -92,10 +93,13 @@ static U0 help() {
         "   run the game in the background (can not be used with human)\n\n"
         "--benchmark:\n"
         "   let the players rematch forever while counting their wins\n\n"
+        "--threads <number> | -t <number>:\n"
+        "   define the amount of threads used for bots that run \n"
+        "   on multiple threads (default: %d)\n\n"
         "--pgn:\n"
         "   export the game as a pgn file\n\n"
         "-o <path>:\n"
-        "   export the game as a pgn file to <path>\n"
+        "   export the game as a pgn file to <path>\n", DEFAULT_THREADS
     );
 }
 
@@ -118,6 +122,7 @@ int main(int argc, char *argv[]) {
     bool net_host;
     char *net_args = NULL;
     bool expect_net_args = false;
+    bool expect_threads = false;
 
     for (U16 i = 1; i < argc; i++) {
         U8 arg_len = strlen(argv[i]);
@@ -130,6 +135,10 @@ int main(int argc, char *argv[]) {
         } else if (expect_pgn_path) {
             pgn_path = argv[i];
             expect_pgn_path = false;
+        } else if (expect_threads) {
+            U16 t = atoi(argv[i]);
+            if (t > 0) threads = t; else help();
+            expect_threads = false;
         } else if (strcmp(argv[i], "--help") == 0) {
             help();
             return 0;
@@ -141,6 +150,9 @@ int main(int argc, char *argv[]) {
             net_play = true;
             net_host = false;
             expect_net_args = true;
+        } else if (strcmp(argv[i], "--threads") == 0 ||
+                   strcmp(argv[i], "-t") == 0) {
+            expect_threads = true;
         } else if (strcmp(argv[i], "--bg") == 0) {
             run_in_bg = true;
         } else if (strcmp(argv[i], "--pgn") == 0) {
