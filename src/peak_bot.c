@@ -2,15 +2,7 @@
 #include "tui.h"
 #include "bots.h"
 
-typedef struct {
-    U8 progress, max;
-} StatusLayer;
-
-typedef struct {
-    StatusLayer layers[65536];
-    U16 depth;
-    U64 count;
-} Status;
+#include <pthread.h>
 
 enum {DRAW, WINNING, LOSING, UNKNOWN};
 #define OUTCOME_NAMES (char *[]){"draw", "winning", "losing", "?"}
@@ -24,19 +16,17 @@ typedef union {
     U0 *ptr;
 } Result;
 
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#define min(a, b) (((a) < (b)) ? (a) : (b))
+typedef struct {
+    pthread_t *list;
+    U16 count;
+} ThreadList;
 
-double calculate_progress(Status *status) {
-    double result = 0.0f;
-    double max = 1.0f;
-    for (U16 i = 0; i <= status->depth; i++) {
-        max *= (double)status->layers[i].max;
-        double progress = (double)status->layers[i].progress / max;
-        result += progress;
-    }
-    return result;
-}
+typedef struct {
+    const Game *game;
+    U16 depth;
+    PeakBotArgs *pbargs;
+    ThreadList *threads;
+} RecursionArgs;
 
 U0 log_reasoning(const Game *game, Result *results, Result final) {
     FILE *file = fopen("peak_bot_reasoning.log", "w");
@@ -58,20 +48,12 @@ U0 log_reasoning(const Game *game, Result *results, Result final) {
     fclose(file);
 }
 
-typedef struct {
-    const Game *game;
-    Status *status;
-    U16 depth, max_depth;
-    bool visualize;
-} RecursionArgs;
-
 U0 *peak_bot_recursion(U0 *pargs) {
     RecursionArgs *args = pargs;
     const Game *game = args->game;
-    Status *status = args->status;
     U16 depth = args->depth;
-    U16 max_depth = args->max_depth;
-    bool visualize = args->visualize;
+    U16 max_depth = args->pbargs->max_depth;
+    bool visualize = args->pbargs->visualize;
 
     if (game->amount_of_legal_moves <= 0 && game->check) {
         return (Result){.count = depth, .outcome = LOSING}.ptr;
@@ -81,14 +63,9 @@ U0 *peak_bot_recursion(U0 *pargs) {
         return (Result){.count = depth, .outcome = UNKNOWN}.ptr;
     }
     
-    status->layers[depth].max = game->amount_of_legal_moves;
-    status->depth = depth;
     Result *results = malloc(game->amount_of_legal_moves * sizeof(Result));
     if (results == NULL) out_of_mem();
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
-        status->depth = depth;
-        status->layers[depth].progress = i;
-
         Game test_game = copy_game(game);
 
         if (!do_move(&test_game, test_game.legal_moves[i].notation)) exit(1);
@@ -97,10 +74,8 @@ U0 *peak_bot_recursion(U0 *pargs) {
         Result result;
         result.ptr = peak_bot_recursion(&(RecursionArgs){
             .game = &test_game,
-            .status = status,
             .depth = depth + 1,
-            .max_depth = max_depth,
-            .visualize = visualize
+            .pbargs = args->pbargs
         });
         if (result.outcome == WINNING) {
             result.outcome = LOSING;
@@ -132,18 +107,15 @@ U0 *peak_bot_recursion(U0 *pargs) {
     }
     if (depth == 0) log_reasoning(game, results, final);
     free(results);
-    status->count++;
     return final.ptr;
 }
 
-U8 peak_bot(const Game *game, U0 *max_depth) {
+U8 peak_bot(const Game *game, U0 *pargs) {
+    PeakBotArgs *args = (PeakBotArgs *)pargs;
     Result result;
     result.ptr = peak_bot_recursion(&(RecursionArgs){
-        .game = game,
-        .status = &(Status){0},
-        .depth = 0,
-        .max_depth = (uintptr_t)max_depth,
-        .visualize = false
+        .game = game, .pbargs = args,
+        .threads = &(ThreadList){0}
     });
     return result.move;
 }
