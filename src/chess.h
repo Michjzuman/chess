@@ -140,5 +140,8 @@ U0 bg(const Game *game, bool testing);
 
 U0 out_of_mem();
 
+#define DEFAULT_THREADS 4
+extern U16 threads;
+
 #endif
 

@@ -6,6 +6,8 @@
 ////////////////[ Author: Michjzuman ]///
 /////////////////////////////////////////
 
+U16 threads = DEFAULT_THREADS;
+
 static const char piece_letters[] = PIECE_LETTERS;
 static const char abc[] = ABC;
 
