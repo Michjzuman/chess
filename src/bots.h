@@ -9,23 +9,13 @@ U8 jonkler(const Game *, U0 *);
 U8 thief(const Game *, U0 *);
 U8 murderer(const Game *, U0 *);
 
-///////////////////////////
-
 U8 codex(const Game *, U0 *model);
 U8 ollama(const Game *, U0 *model);
 U8 stockfish(const Game *, U0 *time);
 
-///////////////////////////
-
 U8 neural_network(const Game *, U0 *nn);
 
-///////////////////////////
-
-typedef struct {
-    U16 max_depth;
-    bool visualize;
-} PeakBotArgs;
-U8 peak_bot(const Game *, U0 *args);
+U8 peak_bot(const Game *, U0 *max_depth);
 
 ///////////////////////////
 

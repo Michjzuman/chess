@@ -24,18 +24,18 @@ static const struct Player players[] = {
         "      a bot that makes random moves but prefers moves\n"
         "      where the king is attacked"
     },
-    {"bot1", peak_bot, &(PeakBotArgs){.max_depth = 1}},
-    {"bot2", peak_bot, &(PeakBotArgs){.max_depth = 2}},
-    {"bot3", peak_bot, &(PeakBotArgs){.max_depth = 3}},
-    {"bot4", peak_bot, &(PeakBotArgs){.max_depth = 4}},
-    {"bot5", peak_bot, &(PeakBotArgs){.max_depth = 5}},
-    {"bot6", peak_bot, &(PeakBotArgs){.max_depth = 6}},
-    {"bot7", peak_bot, &(PeakBotArgs){.max_depth = 7}, "\n"
+    {"bot1", peak_bot, (U0 *)1},
+    {"bot2", peak_bot, (U0 *)2},
+    {"bot3", peak_bot, (U0 *)3},
+    {"bot4", peak_bot, (U0 *)4},
+    {"bot5", peak_bot, (U0 *)5},
+    {"bot6", peak_bot, (U0 *)6},
+    {"bot7", peak_bot, (U0 *)7, "\n"
         "      a bot that predicts <1-7> moves and foresees\n"
         "      wins and losses. if he sees none, he moves randomly\n"
         "      (runs on multiple threads)"
     },
-    {"peak_bot", peak_bot, &(PeakBotArgs){.max_depth = 0}, "\n"
+    {"peak_bot", peak_bot, NULL, "\n"
         "      the PERFECT chess bot that predicts EVERY move\n"
         "      (takes a while) (runs on multiple threads)"
     },
