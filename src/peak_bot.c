@@ -20,8 +20,6 @@ typedef union {
     U0 *ptr;
 } Result;
 
-atomic_U64 total_counter = 0;
-
 #define NEW_THREAD_DEPTH_LIMIT 2
 
 typedef struct {
@@ -173,7 +171,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
     free(tasks);
     free(results);
     args->done = true;
-    total_counter++;
     return final.ptr;
 }
 
@@ -184,7 +181,5 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
         .game = game, .max_depth = (uintptr_t)max_depth,
         .current_threads = &current_threads
     });
-    printf("%llu\n", total_counter);
     return result.move;
 }
-
