@@ -19,7 +19,7 @@ typedef union {
     U0 *ptr;
 } Result;
 
-#define NEW_THREAD_DEPTH_LIMIT 1
+#define NEW_THREAD_DEPTH_LIMIT 2
 
 typedef struct {
     const Game *game;
