@@ -28,6 +28,7 @@ typedef struct {
     U16 max_depth;
     atomic_U16 *current_threads;
     atomic_bool done;
+    bool is_on_new_thread;
 } RecursionArgs;
 
 typedef struct {
@@ -105,11 +106,13 @@ U0 *peak_bot_recursion(U0 *pargs) {
         if (should_run_on_new_thread) {
             Task *task = &tasks[i];
             *task = (Task){.args = nargs};
+            nargs->is_on_new_thread = true;
             I32 r = pthread_create(&task->thread, NULL, peak_bot_recursion, nargs);
             if (r != 0) should_run_on_new_thread = false;
         }
         if (!should_run_on_new_thread) {
-            (*nargs->current_threads)--;
+            nargs->is_on_new_thread = false;
+            atomic_fetch_sub(args->current_threads, 1);
             Result *result = &results[i];
             result->ptr = peak_bot_recursion(nargs);
             if (result->outcome == WINNING) {
@@ -140,7 +143,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
                         result->outcome = WINNING;
                     }
                     result->move = i;
-                    (*args->current_threads)--;
                     close_game((Game *)task->args->game);
                     free((Game *)task->args->game);
                     free(task->args);
@@ -171,6 +173,7 @@ U0 *peak_bot_recursion(U0 *pargs) {
     free(tasks);
     free(results);
     args->done = true;
+    atomic_fetch_sub(args->current_threads, 1);
     return final.ptr;
 }
 
