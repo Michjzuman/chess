@@ -21,7 +21,6 @@ typedef union {
 } Result;
 
 atomic_U64 total_counter = 0;
-atomic_U64 total_counter_last_log = 0;
 
 #define NEW_THREAD_DEPTH_LIMIT 2
 
@@ -86,10 +85,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
 
         if (!do_move(&test_game, test_game.legal_moves[i].notation)) exit(1);
         //if (visualize) tui(&test_game, false);
-        U16 tc = total_counter;
-        if (tc % 1000 == 0 && tc > atomic_exchange(&total_counter_last_log, tc)) {
-            printf("%hu\n", tc);
-        }
         
         Game *test_game_heap = malloc(sizeof(Game));
         if (test_game_heap == NULL) out_of_mem();
@@ -189,6 +184,7 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
         .game = game, .max_depth = (uintptr_t)max_depth,
         .current_threads = &current_threads
     });
+    printf("%llu\n", total_counter);
     return result.move;
 }
 
