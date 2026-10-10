@@ -173,7 +173,7 @@ U0 *peak_bot_recursion(U0 *pargs) {
     free(tasks);
     free(results);
     args->done = true;
-    atomic_fetch_sub(args->current_threads, 1);
+    if (args->is_on_new_thread) atomic_fetch_sub(args->current_threads, 1);
     return final.ptr;
 }
 
