@@ -99,7 +99,7 @@ U0 *peak_bot_recursion(U0 *pargs) {
 
         U16 current_threads = atomic_fetch_add(nargs->current_threads, 1);
         bool should_run_on_new_thread = (
-            current_threads < threads &&
+            current_threads < (threads - 1) &&
             (depth == 0 || depth < ((I32)max_depth - NEW_THREAD_DEPTH_LIMIT))
         );
         
