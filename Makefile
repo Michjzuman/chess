@@ -3,13 +3,19 @@
 ALL = src/*.*
 SRC = src/*.c
 FLAGS = -I src -lm -pthread
-PREFIX ?= /usr/local
+
+PREFIX := /usr
+
+ifeq ($(shell uname -s),Darwin)
+    PREFIX := /usr/local
+endif
 
 all: chess
 
 .PHONY: install debug test
 
 install: chess
+	clang $(SRC) main.c $(FLAGS) -o chess
 	@tmp="$(PREFIX)/bin/.chess.tmp.$$$$"; \
 	cp chess "$$tmp"; \
 	chmod 755 "$$tmp"; \
