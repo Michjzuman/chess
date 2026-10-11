@@ -40,14 +40,12 @@ enum {
     PAWN, KNIGHT, BISHOP,
     ROOK, QUEEN, KING
 };
-typedef U8 PieceType;
 
 enum {WHITE, BLACK};
-typedef U8 Color;
 
 typedef struct {
-    PieceType type: 3;
-    Color color: 1;
+    U8 type: 3;
+    U8 color: 1;
 } Piece;
 
 typedef union {
@@ -95,7 +93,7 @@ typedef struct {
     bool check: 1;
     bool draw: 1;
 
-    Color turn: 1;
+    U8 turn: 1;
 
     TwoPieces board[SIZE][SIZE / 2];
 } Game;

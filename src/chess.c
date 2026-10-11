@@ -83,7 +83,7 @@ U0 raw_move_minimal(Game *game, Move move) {
             )
         )
     );
-    PieceType promoted_piece_type;
+    U8 promoted_piece_type;
     if (promotion) {
         switch (
             move.notation[notation_len - 2] == '=' ?
