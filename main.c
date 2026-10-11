@@ -31,13 +31,18 @@ static const struct Player players[] = {
     {"bot5", peak_bot, (U0 *)5},
     {"bot6", peak_bot, (U0 *)6},
     {"bot7", peak_bot, (U0 *)7, "\n"
-        "      a bot that predicts <1-7> moves and foresees\n"
+        "      a recursive bot that predicts <1-7> moves and foresees\n"
         "      wins and losses. if he sees none, he moves randomly\n"
         "      (runs on multiple threads)"
     },
     {"peak_bot", peak_bot, NULL, "\n"
-        "      the PERFECT chess bot that predicts EVERY move\n"
+        "      the PERFECT chess bot that recursively predicts EVERY move\n"
         "      (takes a while) (runs on multiple threads)"
+    },
+    {"membot", membot, NULL, "\n"
+        "      an experimental self-learning bot that uses the memorized\n"
+        "      researches of the other recursive bots ands extends them\n"
+        "      (runs on multiple threads)"
     },
     {"gpt-6-astra", codex, "gpt-6-astra"},
     {"gpt-6.1-sol", codex, "gpt-6.1-sol"},

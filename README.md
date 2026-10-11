@@ -20,5 +20,5 @@ make install
 
 Run:
 ```bash
-chess
+chess --help
 ```

@@ -16,6 +16,7 @@ U8 stockfish(const Game *, U0 *time);
 U8 neural_network(const Game *, U0 *nn);
 
 U8 peak_bot(const Game *, U0 *max_depth);
+U8 membot(const Game *, U0 *);
 
 ///////////////////////////
 

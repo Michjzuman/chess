@@ -14,7 +14,7 @@ enum {DRAW, WINNING, LOSING, UNKNOWN};
 typedef union {
     struct {
         U8 move;
-        U8 outcome;
+        U8 outcome: 4;
         U16 count;
     };
     U0 *ptr;
@@ -29,6 +29,7 @@ typedef struct {
     atomic_U16 *current_threads;
     atomic_bool done;
     bool is_on_new_thread;
+    bool is_membot;
 } RecursionArgs;
 
 typedef struct {
@@ -36,6 +37,14 @@ typedef struct {
     RecursionArgs *args;
     atomic_bool closed;
 } Task;
+
+#define MEMBOT_DEPTH 3
+
+typedef struct {
+    U8 outcome: 4;
+    U8 branch_count;
+    U0 *branches;
+} MemoryNode;
 
 U0 log_reasoning(const Game *game, Result *results, Result final) {
     FILE *file = fopen("peak_bot_reasoning.log", "w");
@@ -94,7 +103,8 @@ U0 *peak_bot_recursion(U0 *pargs) {
             .game = test_game_heap,
             .depth = depth + 1,
             .max_depth = max_depth,
-            .current_threads = args->current_threads
+            .current_threads = args->current_threads,
+            .is_membot = args->is_membot
         };
 
         U16 current_threads = atomic_fetch_add(nargs->current_threads, 1);
@@ -183,6 +193,17 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
     result.ptr = peak_bot_recursion(&(RecursionArgs){
         .game = game, .max_depth = (uintptr_t)max_depth,
         .current_threads = &current_threads
+    });
+    return result.move;
+}
+
+U8 membot(const Game *game, U0 *args) {
+    Result result;
+    atomic_U16 current_threads = 0;
+    result.ptr = peak_bot_recursion(&(RecursionArgs){
+        .game = game, .max_depth = MEMBOT_DEPTH,
+        .current_threads = &current_threads,
+        .is_membot = true
     });
     return result.move;
 }
