@@ -6,4 +6,5 @@ test*
 *.log
 *.pgn
 games
+research_memory
 .tmp
