@@ -2,7 +2,7 @@
 
 ALL = src/*.*
 SRC = src/*.c
-FLAGS = -I src -lm -pthread
+FLAGS = -I src -lm -pthread -latomic
 RAYLIB_FLAGS = -D RAYLIB -lraylib -framework OpenGL \
 	-framework Cocoa -framework IOKit -framework CoreVideo
 
