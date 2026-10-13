@@ -746,14 +746,14 @@ Game new_game() {
     return game;
 }
 
-bool do_move(Game *game, char *notation) {
+U8 do_move(Game *game, char *notation) {
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         if (strcmp(game->legal_moves[i].notation, notation) == 0) {
             raw_move(game, game->legal_moves[i]);
-            return true;
+            return i;
         }
     }
-    return false;
+    return MOVE_WAS_ILLEGAL;
 }
 
 U8 play_full(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2, bool pgn, PGNArgs *pgn_args) {
@@ -768,7 +768,7 @@ U8 play_full(VF visualize, PF p1, U0 *args1, PF p2, U0 *args2, bool pgn, PGNArgs
         PF player = game.turn == WHITE ? p1 : p2;
         U0 *args = game.turn == WHITE ? args1 : args2;
         char *move = game.legal_moves[player(&game, args)].notation;
-        if (!do_move(&game, move)) break;
+        if (do_move(&game, move) == MOVE_WAS_ILLEGAL) break;
 
         visualize(&game, false);
 
