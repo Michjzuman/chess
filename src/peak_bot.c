@@ -13,7 +13,7 @@ typedef atomic_int_least16_t atomic_U16;
 typedef atomic_int_least64_t atomic_U64;
 
 enum {UNKNOWN, DRAW, WINNING, LOSING, OUTCOME_MAX};
-#define OUTCOME_NAMES (char *[]){"draw", "winning", "losing", "?"}
+#define OUTCOME_NAMES (char *[]){"?", "draw", "winning", "losing"}
 
 typedef union {
     struct {
@@ -31,10 +31,11 @@ typedef struct {
     };
     U0 *branches;
 } MemoryNode;
+#define MEMORY_NODE_OUTCOME_BIAS 250
 
 typedef _Atomic(MemoryNode) atomic_MemoryNode;
 
-#define MEMBOT_DEPTH 6
+#define MEMBOT_DEPTH 3
 
 atomic_MemoryNode research_memory;
 
@@ -79,23 +80,25 @@ U0 log_reasoning(const Game *game, Result *results, Result final) {
 }
 
 U0 memorize_outcome(atomic_MemoryNode *node, U8 outcome) {
-    atomic_store(node, (MemoryNode){.outcome = outcome});
+    atomic_store(node, (MemoryNode){
+        .outcome = outcome + MEMORY_NODE_OUTCOME_BIAS
+    });
 }
 
-U0 fork_memory(atomic_MemoryNode *node, U8 count) {
-    atomic_store(
-        node, ((MemoryNode){
-            .branch_count = count,
-            .branches = calloc(count, sizeof(atomic_MemoryNode))
-        })
-    );
+MemoryNode fork_memory(atomic_MemoryNode *node, U8 count) {
+    MemoryNode n = {
+        .branch_count = count,
+        .branches = calloc(count, sizeof(atomic_MemoryNode))
+    };
+    atomic_store(node, (MemoryNode)n);
+    return n;
 }
 
 U0 close_memory(atomic_MemoryNode *node) {
     MemoryNode n = atomic_load(node);
     if (n.branches == NULL) return;
     for (U8 i = 0; i < n.branch_count; i++) {
-        close_memory(&n.branches[i]);
+        close_memory(&((atomic_MemoryNode *)n.branches)[i]);
     }
     free(n.branches);
 }
@@ -105,6 +108,23 @@ U0 *peak_bot_recursion(U0 *pargs) {
     const Game *game = args->game;
     U16 depth = args->depth;
     U16 max_depth = args->max_depth;
+
+    if (game->amount_of_moves > 4 && depth == 3) {
+        // debug
+    }
+
+    MemoryNode n = atomic_load(args->memory_node);
+
+    if (
+        n.branches == NULL &&
+        n.outcome > MEMORY_NODE_OUTCOME_BIAS
+    ) {
+        args->done = true;
+        return (Result){
+            .count = depth,
+            .outcome = n.outcome - MEMORY_NODE_OUTCOME_BIAS
+        }.ptr;
+    }
 
     U8 outcome = OUTCOME_MAX;
     if (game->amount_of_legal_moves <= 0 && game->check) {
@@ -125,7 +145,13 @@ U0 *peak_bot_recursion(U0 *pargs) {
     Task *tasks = malloc(game->amount_of_legal_moves * sizeof(Task));
     if (tasks == NULL) out_of_mem();
 
-    fork_memory(args->memory_node, game->amount_of_legal_moves);
+    if (n.branches == NULL) {
+        n = fork_memory(args->memory_node, game->amount_of_legal_moves);
+    }
+    printf(
+        "n.branches = %p\n",
+        (atomic_MemoryNode *)n.branches
+    );
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         Game test_game = copy_game(game);
 
@@ -137,13 +163,17 @@ U0 *peak_bot_recursion(U0 *pargs) {
         *test_game_heap = test_game;
         RecursionArgs *nargs = malloc(sizeof(RecursionArgs));
         if (nargs == NULL) out_of_mem();
+        printf(
+            "&n.branches[%u] = %p\n", i,
+            &((atomic_MemoryNode *)n.branches)[i]
+        );
         *nargs = (RecursionArgs){
             .game = test_game_heap,
             .depth = depth + 1,
             .max_depth = max_depth,
             .current_threads = args->current_threads,
             .is_membot = args->is_membot,
-            .memory_node = &((atomic_MemoryNode *)atomic_load(args->memory_node).branches)[i]
+            .memory_node = &((atomic_MemoryNode *)n.branches)[i]
         };
 
         U16 current_threads = atomic_fetch_add(nargs->current_threads, 1);
@@ -272,7 +302,7 @@ U0 memory_writer_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi
         *i = 0;
     }
     if (n.branches == NULL) {
-        content[*i] = n.outcome + 250; (*i)++;
+        content[*i] = n.outcome; (*i)++;
     } else {
         content[*i] = n.branch_count; (*i)++;
         for (U8 i2 = 0; i2 < n.branch_count; i2++) {
@@ -299,7 +329,7 @@ U0 *memory_writer_agent(U0 *args) {
         write_memory_file(content, &i, &fi);
         free(content);
         char cmd[1024];
-        snprintf(cmd, 1024, "cp %s/* %s", MEMORY_TMP_DIRPATH, MEMORY_DIRPATH);
+        snprintf(cmd, 1024, "mv %s/* %s", MEMORY_TMP_DIRPATH, MEMORY_DIRPATH);
         system(cmd);
     }
     return NULL;
