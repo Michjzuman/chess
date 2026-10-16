@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <sys/stat.h>
+
 #ifdef RAYLIB
     #include <raylib.h>
 #endif
@@ -28,6 +29,7 @@ typedef struct {
     union {
         U8 outcome;
         U8 branch_count;
+        // here vro i gotta insert like count and then like put together forced results and shii
     };
     U0 *branches;
 } MemoryNode;
@@ -35,7 +37,7 @@ typedef struct {
 
 typedef _Atomic(MemoryNode) atomic_MemoryNode;
 
-#define MEMBOT_DEPTH 3
+#define MEMBOT_DEPTH 4
 
 atomic_MemoryNode research_memory;
 
@@ -109,10 +111,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
     U16 depth = args->depth;
     U16 max_depth = args->max_depth;
 
-    if (game->amount_of_moves > 4 && depth == 3) {
-        // debug
-    }
-
     MemoryNode n = atomic_load(args->memory_node);
 
     if (
@@ -148,14 +146,10 @@ U0 *peak_bot_recursion(U0 *pargs) {
     if (n.branches == NULL) {
         n = fork_memory(args->memory_node, game->amount_of_legal_moves);
     }
-    printf(
-        "n.branches = %p\n",
-        (atomic_MemoryNode *)n.branches
-    );
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         Game test_game = copy_game(game);
 
-        if (!do_move(&test_game, test_game.legal_moves[i].notation)) exit(1);
+        if (do_move(&test_game, test_game.legal_moves[i].notation) == MOVE_WAS_ILLEGAL) exit(1);
         //if (visualize) tui(&test_game, false);
         
         Game *test_game_heap = malloc(sizeof(Game));
@@ -163,10 +157,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
         *test_game_heap = test_game;
         RecursionArgs *nargs = malloc(sizeof(RecursionArgs));
         if (nargs == NULL) out_of_mem();
-        printf(
-            "&n.branches[%u] = %p\n", i,
-            &((atomic_MemoryNode *)n.branches)[i]
-        );
         *nargs = (RecursionArgs){
             .game = test_game_heap,
             .depth = depth + 1,
@@ -258,40 +248,21 @@ U0 *peak_bot_recursion(U0 *pargs) {
 
 atomic_bool write_memory;
 
-#ifdef RAYLIB
-    bool window_shown = true;
-
-    U0 visualize(U0) {
-        InitWindow(800, 450, "chess");
-        SetTargetFPS(30);
-        while (!WindowShouldClose()) {
-            BeginDrawing();
-            ClearBackground(RAYWHITE);
-            DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
-            EndDrawing();
-        }
-        CloseWindow();
-        exit(0);
-    }
-#endif
-
 #define MEMORY_DIRPATH "./research_memory"
 #define MEMORY_TMP_DIRPATH "./research_memory/.tmp"
 #define MEMORY_FILE_SIZE_LIMIT (U64)100000000
 
 U0 write_memory_file(U8 *content, U64 *i, U64 *fi) {
     char path[1024];
-    snprintf(
-        path, 1024, "%s/%llu.mem",
-        MEMORY_TMP_DIRPATH, *fi
-    );
+    snprintf(path, 1024, "%s/%llu.mem", MEMORY_TMP_DIRPATH, *fi);
     FILE *file = fopen(path, "w");
     if (file == NULL) {
-        fprintf(stderr, "failed to open %s\n", path);
+        fprintf(stderr, "failed to write %s\n", path);
         return;
     }
     fwrite(content, sizeof(U8), *i, file);
     fclose(file);
+    (*i) = 0;
     (*fi)++;
 }
 
@@ -299,7 +270,6 @@ U0 memory_writer_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi
     MemoryNode n = atomic_load(node);
     if (*i > 0 && *i % MEMORY_FILE_SIZE_LIMIT == 0) {
         write_memory_file(content, i, fi);
-        *i = 0;
     }
     if (n.branches == NULL) {
         content[*i] = n.outcome; (*i)++;
@@ -313,14 +283,16 @@ U0 memory_writer_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi
     }
 }
 
-U0 *memory_writer_agent(U0 *args) {
-    struct stat st1;
-    if (stat(MEMORY_DIRPATH, &st1) != 0 || !S_ISDIR(st1.st_mode)) {
-        mkdir(MEMORY_DIRPATH, 0700);
-    }
-    struct stat st2;
-    if (stat(MEMORY_TMP_DIRPATH, &st2) != 0 || !S_ISDIR(st2.st_mode)) {
-        mkdir(MEMORY_TMP_DIRPATH, 0700);
+U0 *memory_writer(U0 *args) {
+    {
+        struct stat st1;
+        if (stat(MEMORY_DIRPATH, &st1) != 0 || !S_ISDIR(st1.st_mode)) {
+            mkdir(MEMORY_DIRPATH, 0700);
+        }
+        struct stat st2;
+        if (stat(MEMORY_TMP_DIRPATH, &st2) != 0 || !S_ISDIR(st2.st_mode)) {
+            mkdir(MEMORY_TMP_DIRPATH, 0700);
+        }
     }
     while (write_memory) {
         U8 *content = malloc(MEMORY_FILE_SIZE_LIMIT);
@@ -335,27 +307,121 @@ U0 *memory_writer_agent(U0 *args) {
     return NULL;
 }
 
-U8 get_bot_move(const Game *game, RecursionArgs *args) {
-    write_memory = true;
-    pthread_t memory_writer;
-    pthread_create(&memory_writer, NULL, memory_writer_agent, NULL);
-    #ifdef RAYLIB
-        if (!window_shown) {
-            pid_t pid = fork();
-            if (pid == 0) {
-                getpid();
-                window_shown = true;
-                visualize();
-            }
+U0 read_memory_file(U8 *content, U64 *i, U64 *fi) {
+    char path[1024];
+    snprintf(path, 1024, "%s/%llu.mem", MEMORY_DIRPATH, *fi);
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        fprintf(stderr, "failed to read %s\n", path);
+        return;
+    }
+    fread(content, sizeof(U8), *i, file);
+    fclose(file);
+    (*i) = 0;
+    (*fi)++;
+}
+
+U0 memory_reader_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi) {
+    if (*i > 0 && *i % MEMORY_FILE_SIZE_LIMIT == 0) {
+        read_memory_file(content, i, fi);
+    }
+    U8 v = content[*i];
+    if (v >= MEMORY_NODE_OUTCOME_BIAS || v == 0) {
+        memorize_outcome(node, v - MEMORY_NODE_OUTCOME_BIAS); (*i)++;
+    } else {
+        fork_memory(node, v); (*i)++;
+        for (U8 i2 = 0; i2 < v; i2++) {
+            memory_reader_recursion(
+                &((atomic_MemoryNode *)atomic_load(node).branches)[i2],
+                content, i, fi
+            );
         }
-    #endif
+    }
+}
+
+U0 memory_reader(U0) {
+    {
+        struct stat st1;
+        if (stat(MEMORY_DIRPATH, &st1) != 0 || !S_ISDIR(st1.st_mode)) return;
+        struct stat st2;
+        char path[1024];
+        snprintf(path, 1024, "%s/0.mem", MEMORY_DIRPATH);
+        if (stat(path, &st2) != 0) return;
+    }
+    MemoryNode n = atomic_load(&research_memory);
+    if (n.branches == NULL && n.branch_count == 0) {
+        U8 *content = malloc(MEMORY_FILE_SIZE_LIMIT);
+        U64 i = MEMORY_FILE_SIZE_LIMIT, fi = 0;
+        read_memory_file(content, &i, &fi);
+        memory_reader_recursion(&research_memory, content, &i, &fi);
+        free(content);
+    }
+}
+
+#ifdef RAYLIB
+    #define WIN_W 1400
+    #define WIN_H 800
+
+    typedef struct {
+        U64 *w;
+        U16 h;
+    } Visualization;
+
+    Visualization vis;
+
+    U0 visualization_recursion(atomic_MemoryNode *node, U16 depth) {
+        if (depth + 1 > vis.h) {
+            vis.h++;
+            vis.w = realloc(vis.w, vis.h * sizeof(U64));
+        }
+    }
+
+    U0 visualize(U0) {
+        InitWindow(WIN_W, WIN_H, "chess");
+        SetTargetFPS(30);
+        while (!WindowShouldClose()) {
+            memory_reader();
+            BeginDrawing();
+            ClearBackground(RAYWHITE);
+
+            Vector2 start = { 100, 100 };
+            Vector2 end = { 300, 200 };
+
+            DrawLineV(start, end, BLACK);
+
+            EndDrawing();
+        }
+        CloseWindow();
+        exit(0);
+    }
+
+    int main() {
+        visualize();
+    }
+#endif
+
+U8 get_bot_move(const Game *game, RecursionArgs *args) {
+    memory_reader();
+    write_memory = true;
+    pthread_t memory_writer_thread;
+    pthread_create(&memory_writer_thread, NULL, memory_writer, NULL);
     Result result;
     atomic_U16 current_threads = 0;
     args->current_threads = &current_threads;
-    args->memory_node = &research_memory;
+    {
+        Game test_game = new_game();
+        atomic_MemoryNode *node = &research_memory;
+        for (U16 i = 0; i < game->amount_of_moves; i++) {
+            MemoryNode n = atomic_load(node);
+            if (n.branches == NULL) n = fork_memory(node, test_game.amount_of_legal_moves);
+            U8 move = do_move(&test_game, game->moves[i]);
+            node = &((atomic_MemoryNode *)n.branches)[move];
+        }
+        args->memory_node = node; // why yo bulleh meh
+    }
     result.ptr = peak_bot_recursion(args);
     write_memory = false;
-    pthread_join(memory_writer, NULL);
+    pthread_join(memory_writer_thread, NULL);
     return result.move;
 }
 
