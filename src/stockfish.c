@@ -78,16 +78,26 @@ char *ask_stockfish(const Game *game, U32 time) {
     }
     char *command_answer = malloc(64 * sizeof(char));
     if (command_answer == NULL) out_of_mem();
-    if (fgets(command_answer, 64, pipe) != NULL) {
-        command_answer[strcspn(command_answer, "\r\n")] = '\0';
+    if (fgets(command_answer, 64, pipe) == NULL) {
+        pclose(pipe);
+        free(command_answer);
+        fprintf(stderr, "no response from stockfish\n");
+        exit(1);
     }
+    command_answer[strcspn(command_answer, "\r\n")] = '\0';
     pclose(pipe);
     return command_answer;
 }
 
 U8 stockfish(const Game *game, U0 *time) {
     char *sf_answer = ask_stockfish(game, (uintptr_t)time);
-    char *answer = strstr(sf_answer, "bestmove") + 9;
+    char *answer = strstr(sf_answer, "bestmove ");
+    if (answer == NULL) {
+        free(sf_answer);
+        fprintf(stderr, "invalid response from stockfish\n");
+        exit(1);
+    }
+    answer += 9;
     if (strchr(answer, ' ') != NULL) answer[strchr(answer, ' ') - answer] = '\0';
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         char *stockfish_notation = get_stockfish_notation(game->legal_moves[i]);
