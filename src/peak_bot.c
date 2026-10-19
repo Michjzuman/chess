@@ -16,28 +16,23 @@ typedef atomic_int_least64_t atomic_U64;
 enum {UNKNOWN, DRAW, WINNING, LOSING, OUTCOME_MAX};
 #define OUTCOME_NAMES (char *[]){"?", "draw", "winning", "losing"}
 
-typedef union {
-    struct {
-        U8 move;
-        U8 outcome: 4;
-        U16 count;
-    };
-    U0 *ptr;
+typedef struct {
+    U8 move;
+    U8 outcome: 4;
+    U16 count;
 } Result;
 
 typedef struct {
-    union {
-        U8 outcome;
-        U8 branch_count;
-        // here vro i gotta insert like count and then like put together forced results and shii
-    };
+    U8 outcome;
+    U16 result_count;
+    U8 branch_count;
     U0 *branches;
 } MemoryNode;
 #define MEMORY_NODE_OUTCOME_BIAS 250
 
 typedef _Atomic(MemoryNode) atomic_MemoryNode;
 
-#define MEMBOT_DEPTH 4
+#define MRPOOP_DEPTH 4
 
 atomic_MemoryNode research_memory;
 
@@ -50,8 +45,9 @@ typedef struct {
     atomic_U16 *current_threads;
     atomic_bool done;
     bool is_on_new_thread: 1;
-    bool is_membot: 1;
+    bool is_mrpoop: 1;
     atomic_MemoryNode *memory_node;
+    Result result;
 } RecursionArgs;
 
 typedef struct {
@@ -81,21 +77,6 @@ U0 log_reasoning(const Game *game, Result *results, Result final) {
     fclose(file);
 }
 
-U0 memorize_outcome(atomic_MemoryNode *node, U8 outcome) {
-    atomic_store(node, (MemoryNode){
-        .outcome = outcome + MEMORY_NODE_OUTCOME_BIAS
-    });
-}
-
-MemoryNode fork_memory(atomic_MemoryNode *node, U8 count) {
-    MemoryNode n = {
-        .branch_count = count,
-        .branches = calloc(count, sizeof(atomic_MemoryNode))
-    };
-    atomic_store(node, (MemoryNode)n);
-    return n;
-}
-
 U0 close_memory(atomic_MemoryNode *node) {
     MemoryNode n = atomic_load(node);
     if (n.branches == NULL) return;
@@ -113,15 +94,14 @@ U0 *peak_bot_recursion(U0 *pargs) {
 
     MemoryNode n = atomic_load(args->memory_node);
 
-    if (
-        n.branches == NULL &&
-        n.outcome > MEMORY_NODE_OUTCOME_BIAS
-    ) {
+    if (args->is_mrpoop && n.outcome != UNKNOWN) {
         args->done = true;
-        return (Result){
-            .count = depth,
-            .outcome = n.outcome - MEMORY_NODE_OUTCOME_BIAS
-        }.ptr;
+        if (args->is_on_new_thread) atomic_fetch_sub(args->current_threads, 1);
+        args->result = (Result){
+            .count = n.result_count,
+            .outcome = n.outcome
+        };
+        return NULL;
     }
 
     U8 outcome = OUTCOME_MAX;
@@ -134,8 +114,11 @@ U0 *peak_bot_recursion(U0 *pargs) {
     }
     if (outcome < OUTCOME_MAX) {
         args->done = true;
-        memorize_outcome(args->memory_node, outcome);
-        return (Result){.count = depth, .outcome = outcome}.ptr;
+        n.outcome = outcome;
+        atomic_store(args->memory_node, n);
+        if (args->is_on_new_thread) atomic_fetch_sub(args->current_threads, 1);
+        args->result = (Result){.count = depth, .outcome = outcome};
+        return NULL;
     }
     
     Result *results = malloc(game->amount_of_legal_moves * sizeof(Result));
@@ -144,7 +127,9 @@ U0 *peak_bot_recursion(U0 *pargs) {
     if (tasks == NULL) out_of_mem();
 
     if (n.branches == NULL) {
-        n = fork_memory(args->memory_node, game->amount_of_legal_moves);
+        n.branch_count = game->amount_of_legal_moves;
+        n.branches = calloc(n.branch_count, sizeof(atomic_MemoryNode));
+        atomic_store(args->memory_node, n);
     }
     for (U8 i = 0; i < game->amount_of_legal_moves; i++) {
         Game test_game = copy_game(game);
@@ -162,7 +147,7 @@ U0 *peak_bot_recursion(U0 *pargs) {
             .depth = depth + 1,
             .max_depth = max_depth,
             .current_threads = args->current_threads,
-            .is_membot = args->is_membot,
+            .is_mrpoop = args->is_mrpoop,
             .memory_node = &((atomic_MemoryNode *)n.branches)[i]
         };
 
@@ -183,7 +168,8 @@ U0 *peak_bot_recursion(U0 *pargs) {
             nargs->is_on_new_thread = false;
             atomic_fetch_sub(args->current_threads, 1);
             Result *result = &results[i];
-            result->ptr = peak_bot_recursion(nargs);
+            peak_bot_recursion(nargs);
+            *result = nargs->result;
             if (result->outcome == WINNING) {
                 result->outcome = LOSING;
             } else if (result->outcome == LOSING) {
@@ -205,7 +191,8 @@ U0 *peak_bot_recursion(U0 *pargs) {
                 done = false;
                 if (task->args->done) {
                     Result *result = &results[i];
-                    pthread_join(task->thread, (U0 **)&result->ptr);
+                    pthread_join(task->thread, NULL);
+                    *result = task->args->result;
                     if (result->outcome == WINNING) {
                         result->outcome = LOSING;
                     } else if (result->outcome == LOSING) {
@@ -229,7 +216,6 @@ U0 *peak_bot_recursion(U0 *pargs) {
             bool this_draws = this.outcome == DRAW || this.outcome == UNKNOWN;
             bool this_loses = this.outcome == LOSING;
             bool winning = final.outcome == WINNING;
-            bool drawing = final.outcome == DRAW || final.outcome == UNKNOWN;
             bool losing = final.outcome == LOSING;
             if (
                 (this_wins && (!winning || this.count < final.count)) ||
@@ -238,12 +224,16 @@ U0 *peak_bot_recursion(U0 *pargs) {
             ) final = this;
         }
     }
+    n.outcome = final.outcome;
+    n.result_count = final.count + 1;
+    atomic_store(args->memory_node, n);
     if (depth == 0) log_reasoning(game, results, final);
     free(tasks);
     free(results);
+    args->result = final;
     args->done = true;
     if (args->is_on_new_thread) atomic_fetch_sub(args->current_threads, 1);
-    return final.ptr;
+    return NULL;
 }
 
 atomic_bool write_memory;
@@ -266,20 +256,21 @@ U0 write_memory_file(U8 *content, U64 *i, U64 *fi) {
     (*fi)++;
 }
 
-U0 memory_writer_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi) {
-    MemoryNode n = atomic_load(node);
+U0 write_byte_to_file(U8 *content, U64 *i, U64 *fi, U8 byte) {
     if (*i > 0 && *i % MEMORY_FILE_SIZE_LIMIT == 0) {
         write_memory_file(content, i, fi);
     }
-    if (n.branches == NULL) {
-        content[*i] = n.outcome; (*i)++;
-    } else {
-        content[*i] = n.branch_count; (*i)++;
-        for (U8 i2 = 0; i2 < n.branch_count; i2++) {
-            memory_writer_recursion(
-                &((atomic_MemoryNode *)n.branches)[i2], content, i, fi
-            );
-        }
+    content[*i] = byte; (*i)++;
+}
+
+U0 memory_writer_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi) {
+    MemoryNode n = atomic_load(node);
+    write_byte_to_file(content, i, fi, n.outcome);
+    write_byte_to_file(content, i, fi, n.result_count>>8);
+    write_byte_to_file(content, i, fi, n.result_count);
+    write_byte_to_file(content, i, fi, n.branch_count);
+    for (U8 i2 = 0; i2 < n.branch_count; i2++) {
+        memory_writer_recursion(&((atomic_MemoryNode *)n.branches)[i2], content, i, fi);
     }
 }
 
@@ -321,21 +312,29 @@ U0 read_memory_file(U8 *content, U64 *i, U64 *fi) {
     (*fi)++;
 }
 
-U0 memory_reader_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi) {
+U8 read_byte_from_file(U8 *content, U64 *i, U64 *fi) {
     if (*i > 0 && *i % MEMORY_FILE_SIZE_LIMIT == 0) {
         read_memory_file(content, i, fi);
     }
-    U8 v = content[*i];
-    if (v >= MEMORY_NODE_OUTCOME_BIAS || v == 0) {
-        memorize_outcome(node, v - MEMORY_NODE_OUTCOME_BIAS); (*i)++;
-    } else {
-        fork_memory(node, v); (*i)++;
-        for (U8 i2 = 0; i2 < v; i2++) {
-            memory_reader_recursion(
-                &((atomic_MemoryNode *)atomic_load(node).branches)[i2],
-                content, i, fi
-            );
-        }
+    U8 result = content[*i]; (*i)++;
+    return result;
+}
+
+U0 memory_reader_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi) {
+    MemoryNode n;
+    n.outcome = read_byte_from_file(content, i, fi);
+    n.result_count = (
+        (read_byte_from_file(content, i, fi)<<8) |
+        read_byte_from_file(content, i, fi)
+    );
+    n.branch_count = read_byte_from_file(content, i, fi);
+    n.branches = calloc(n.branch_count, sizeof(atomic_MemoryNode));
+    atomic_store(node, n);
+    for (U8 i2 = 0; i2 < n.branch_count; i2++) {
+        memory_reader_recursion(
+            &((atomic_MemoryNode *)n.branches)[i2],
+            content, i, fi
+        );
     }
 }
 
@@ -377,18 +376,70 @@ U0 memory_reader(U0) {
     }
 
     U0 visualize(U0) {
-        InitWindow(WIN_W, WIN_H, "chess");
+        typedef struct {
+            atomic_MemoryNode *node;
+            float x, y, span;
+            float parent_x, parent_y;
+            U16 depth;
+        } DrawItem;
+
+        InitWindow(WIN_W, WIN_H, "chess research memory");
         SetTargetFPS(30);
         while (!WindowShouldClose()) {
             memory_reader();
             BeginDrawing();
             ClearBackground(RAYWHITE);
+            DrawText("Research memory tree (depth limited)", 20, 18, 20, DARKGRAY);
 
-            Vector2 start = { 100, 100 };
-            Vector2 end = { 300, 200 };
+            U64 capacity = 256, top = 0, drawn = 0;
+            DrawItem *stack = malloc(capacity * sizeof(DrawItem));
+            if (stack != NULL) {
+                stack[top++] = (DrawItem){
+                    .node = &research_memory,
+                    .x = WIN_W / 2.0f,
+                    .y = 70.0f,
+                    .span = WIN_W - 40.0f
+                };
+                while (top > 0 && drawn < 5000) {
+                    DrawItem item = stack[--top];
+                    MemoryNode n = atomic_load(item.node);
+                    if (item.depth > 0) {
+                        DrawLine(item.parent_x, item.parent_y, item.x, item.y, LIGHTGRAY);
+                    }
+                    Color color = n.outcome == WINNING ? GREEN :
+                        n.outcome == LOSING ? RED :
+                        n.outcome == DRAW ? BLUE : GRAY;
+                    DrawCircle((int)item.x, (int)item.y, 9, color);
+                    char label[48];
+                    snprintf(label, sizeof(label), "%u / %u", n.outcome, n.result_count);
+                    DrawText(label, (int)item.x + 11, (int)item.y - 7, 12, DARKGRAY);
+                    drawn++;
 
-            DrawLineV(start, end, BLACK);
-
+                    if (item.depth >= 8 || n.branches == NULL || n.branch_count == 0) continue;
+                    float child_y = item.y + 76.0f;
+                    float child_span = item.span / n.branch_count;
+                    for (U8 i = 0; i < n.branch_count; i++) {
+                        if (top == capacity) {
+                            capacity *= 2;
+                            DrawItem *grown = realloc(stack, capacity * sizeof(DrawItem));
+                            if (grown == NULL) break;
+                            stack = grown;
+                        }
+                        float child_x = item.x - item.span / 2.0f + child_span * (i + 0.5f);
+                        stack[top++] = (DrawItem){
+                            .node = &((atomic_MemoryNode *)n.branches)[i],
+                            .x = child_x,
+                            .y = child_y,
+                            .span = child_span,
+                            .parent_x = item.x,
+                            .parent_y = item.y,
+                            .depth = item.depth + 1
+                        };
+                    }
+                }
+                free(stack);
+            }
+            DrawText("? unknown   blue draw   green winning   red losing", 20, WIN_H - 30, 16, DARKGRAY);
             EndDrawing();
         }
         CloseWindow();
@@ -413,13 +464,18 @@ U8 get_bot_move(const Game *game, RecursionArgs *args) {
         atomic_MemoryNode *node = &research_memory;
         for (U16 i = 0; i < game->amount_of_moves; i++) {
             MemoryNode n = atomic_load(node);
-            if (n.branches == NULL) n = fork_memory(node, test_game.amount_of_legal_moves);
+            if (n.branches == NULL) {
+                n.branch_count = test_game.amount_of_legal_moves;
+                n.branches = calloc(n.branch_count, sizeof(atomic_MemoryNode));
+                atomic_store(node, n);
+            }
             U8 move = do_move(&test_game, game->moves[i]);
             node = &((atomic_MemoryNode *)n.branches)[move];
         }
         args->memory_node = node; // why yo bulleh meh
     }
-    result.ptr = peak_bot_recursion(args);
+    peak_bot_recursion(args);
+    result = args->result;
     write_memory = false;
     pthread_join(memory_writer_thread, NULL);
     return result.move;
@@ -431,8 +487,8 @@ U8 peak_bot(const Game *game, U0 *max_depth) {
     });
 }
 
-U8 membot(const Game *game, U0 *args) {
+U8 mrpoop(const Game *game, U0 *args) {
     return get_bot_move(game, &(RecursionArgs){
-        .game = game, .max_depth = MEMBOT_DEPTH, .is_membot = true
+        .game = game, .max_depth = MRPOOP_DEPTH, .is_mrpoop = true
     });
 }

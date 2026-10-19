@@ -39,7 +39,7 @@ static const struct Player players[] = {
         "      the PERFECT chess bot that recursively predicts EVERY move\n"
         "      (takes a while) (runs on multiple threads)"
     },
-    {"membot", membot, NULL, "\n"
+    {"mrpoop", mrpoop, NULL, "\n"
         "      an experimental self-learning bot that uses the memorized\n"
         "      researches of the other recursive bots ands extends them\n"
         "      (runs on multiple threads)"
