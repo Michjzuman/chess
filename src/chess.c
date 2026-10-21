@@ -229,13 +229,11 @@ U0 is_draw(Game *game) {
     bool only_kings = true;
     for (U8 y = 0; y < SIZE; y++) {
         for (U8 x = 0; x < SIZE; x++) {
-            if (
-                xy(game, x, y).type != KING &&
-                xy(game, x, y).type != EMPTY
-            ) {
-                only_kings = false;
+            if (xy(game, x, y).type != KING && xy(game, x, y).type != EMPTY) {
+                only_kings = false; break;
             }
         }
+        if (!only_kings) break;
     }
 
     if (only_kings) {
