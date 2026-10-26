@@ -328,7 +328,7 @@ U0 memory_reader_recursion(atomic_MemoryNode *node, U8 *content, U64 *i, U64 *fi
         read_byte_from_file(content, i, fi)
     );
     n.branch_count = read_byte_from_file(content, i, fi);
-    n.branches = calloc(n.branch_count, sizeof(atomic_MemoryNode));
+    n.branches = n.branch_count ? calloc(n.branch_count, sizeof(atomic_MemoryNode)) : NULL;
     atomic_store(node, n);
     for (U8 i2 = 0; i2 < n.branch_count; i2++) {
         memory_reader_recursion(
