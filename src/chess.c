@@ -85,16 +85,16 @@ U0 raw_move_minimal(Game *game, Move move) {
     );
     U8 promoted_piece_type;
     if (promotion) {
-        switch (
+        char ch = (
             move.notation[notation_len - 2] == '=' ?
             move.notation[notation_len - 1] :
             move.notation[notation_len - 2]
-        ) {
-            case piece_letters[2]: promoted_piece_type = KNIGHT; break;
-            case piece_letters[3]: promoted_piece_type = BISHOP; break;
-            case piece_letters[4]: promoted_piece_type = ROOK; break;
-            case piece_letters[5]: promoted_piece_type = QUEEN; break;
-        }
+        );
+        promoted_piece_type = (
+            ch == piece_letters[2] ? KNIGHT :
+            ch == piece_letters[3] ? BISHOP :
+            ch == piece_letters[4] ? ROOK : QUEEN
+        );
     }
 
     bool move_without_pawn_move_or_take = (
